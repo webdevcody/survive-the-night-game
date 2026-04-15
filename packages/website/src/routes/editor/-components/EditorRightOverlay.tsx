@@ -5,6 +5,7 @@ import { ExpandMapDialog } from "./ExpandMapDialog";
 import { QuestsEditorPanel } from "./QuestsEditorPanel";
 import { NpcsListPanel } from "./NpcsListPanel";
 import { SpawnersListPanel } from "./SpawnersListPanel";
+import { MerchantsListPanel } from "./MerchantsListPanel";
 import type { EditorSidebarSection, Layer, SaveStatus } from "../-types";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import { useEffect, useState } from "react";
@@ -22,6 +23,7 @@ const sidebarTabs: { id: EditorSidebarSection; label: string }[] = [
   { id: "tiles", label: "Tiles" },
   { id: "npcs", label: "NPCs" },
   { id: "spawners", label: "Spawners" },
+  { id: "merchants", label: "Merchants" },
   { id: "quests", label: "Quests" },
 ];
 
@@ -112,7 +114,7 @@ export function EditorRightOverlay({
           <p className={`${sectionLabel} mb-1`}>Sidebar</p>
           <div className="flex flex-wrap items-stretch gap-1">
             <div
-              className="grid min-w-0 flex-1 grid-cols-2 gap-0.5 rounded border border-gray-600 bg-gray-950/60 p-0.5 sm:grid-cols-4"
+              className="grid min-w-0 flex-1 grid-cols-2 gap-0.5 rounded border border-gray-600 bg-gray-950/60 p-0.5 sm:grid-cols-3 lg:grid-cols-5"
               role="radiogroup"
               aria-label="Sidebar section"
             >
@@ -152,6 +154,11 @@ export function EditorRightOverlay({
         {sidebarSection === "spawners" ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <SpawnersListPanel />
+          </div>
+        ) : null}
+        {sidebarSection === "merchants" ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <MerchantsListPanel />
           </div>
         ) : null}
         {sidebarSection === "quests" ? (

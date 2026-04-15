@@ -10,7 +10,6 @@ import {
   getEntitiesByType,
   removeEntity as removeEntityFromState,
 } from "@/state";
-import { MerchantBuyPanel } from "@/ui/merchant-buy-panel";
 import { CraftingPanel } from "@/ui/crafting-panel";
 import { StorageManager } from "@/managers/storage";
 import { Hud } from "@/ui/hud";
@@ -56,6 +55,8 @@ import { QuestCompletedModal } from "./ui/quest-completed-modal";
 import { QuestNotificationTracker } from "./managers/quest-notification-tracker";
 import { resolveQuestNavigationTarget } from "@/util/resolve-quest-navigation-target";
 import { SignClient } from "@/entities/items/sign";
+import { MerchantClient } from "@/entities/environment/merchant";
+import { registerWorldCollidablesAccess } from "@/util/world-collidables-access";
 
 export class GameClient {
   private ctx: CanvasRenderingContext2D;
@@ -90,7 +91,6 @@ export class GameClient {
   // UI
   private renderer: Renderer;
   private hud: Hud;
-  private merchantBuyPanel: MerchantBuyPanel;
   private craftingPanel: CraftingPanel;
   private questCompletedModal: QuestCompletedModal;
   private questNotificationTracker!: QuestNotificationTracker;
@@ -159,19 +159,9 @@ export class GameClient {
     };
 
     this.mapManager = new MapManager(this);
+    registerWorldCollidablesAccess(() => this.mapManager.getMapData()?.collidables ?? null);
     this.questCompletedModal = new QuestCompletedModal();
 
-    // TODO: refactor to use event emitter
-    this.merchantBuyPanel = new MerchantBuyPanel(this.assetManager, {
-      getPlayer,
-      onBuy: (merchantId, itemIndex) => {
-        this.socketManager.sendMerchantBuy(String(merchantId), itemIndex);
-      },
-      onSell: (merchantId, inventorySlot) => {
-        this.socketManager.sendMerchantSell(merchantId, inventorySlot);
-      },
-      getCanvas: () => canvas,
-    });
     this.craftingPanel = new CraftingPanel(this.assetManager, {
       getPlayer,
       onCraft: (request) => {
@@ -196,7 +186,6 @@ export class GameClient {
           ? player.getAccessibleInventorySlotCount()
           : getConfig().player.MAX_INVENTORY_SLOTS;
       },
-      isMerchantPanelOpen: () => this.merchantBuyPanel.isVisible(),
       isCraftingPanelOpen: () => this.craftingPanel.isVisible(),
       isBankOpen: () => this.hud.isBankOpen(),
       isFullscreenMapOpen: () => this.hud.isFullscreenMapOpen(),
@@ -217,6 +206,10 @@ export class GameClient {
       isPlayerDead: () => {
         const player = getPlayer();
         return player ? player.isDead() : false;
+      },
+      isRidingSkateboard: () => {
+        const player = getPlayer();
+        return player instanceof PlayerClient && player.isOnSkateboard();
       },
     });
 
@@ -271,6 +264,13 @@ export class GameClient {
       sendInteract: (targetEntityId) => {
         this.socketManager?.sendInteract(targetEntityId);
       },
+      sendMerchantBuy: (merchantId, itemIndex) => {
+        this.socketManager?.sendMerchantBuy(String(merchantId), itemIndex);
+      },
+      sendMerchantSell: (merchantId, inventorySlot) => {
+        this.socketManager?.sendMerchantSell(merchantId, inventorySlot);
+      },
+      getCanvas: () => this.canvas,
       onRequestExitGame,
     });
     this.hud.setDialogueQuestChoiceHandler((action) => {
@@ -304,7 +304,6 @@ export class GameClient {
       this.gameState,
       this.mapManager,
       this.hud,
-      this.merchantBuyPanel,
       this.craftingPanel,
       this.questCompletedModal,
       this.particleManager,
@@ -345,13 +344,11 @@ export class GameClient {
     });
 
     // Panels
-    im.on("merchantKeyDown", ({ key }) => this.merchantBuyPanel.handleKeyDown(key));
     im.on("craftingPanelKeyDown", ({ key }) => this.craftingPanel.handleKeyDown(key));
     im.on("escape", () => {
       if (this.dialogueManager.declineOpenQuestOffer(this.gameState)) return;
       if (this.hud.isInventoryScreenOpen()) { this.hud.setInventoryScreenOpen(false); return; }
       if (this.craftingPanel.isVisible()) { this.craftingPanel.close(); return; }
-      if (this.merchantBuyPanel.isVisible()) { this.merchantBuyPanel.close(); }
     });
 
     // Inventory & items
@@ -382,7 +379,6 @@ export class GameClient {
   }
 
   private handleInteractStart(): void {
-    if (this.merchantBuyPanel.isVisible()) { this.merchantBuyPanel.close(); return; }
     if (this.craftingPanel.isVisible()) { this.craftingPanel.close(); return; }
 
     const player = this.getMyPlayer();
@@ -487,11 +483,27 @@ export class GameClient {
           }
         }
 
-        if (closest.getType() === "merchant") {
-          const merchant = closest as any;
-          const shopItems = merchant.getShopItems?.();
-          if (shopItems && shopItems.length > 0) {
-            this.merchantBuyPanel.open(closest.getId(), shopItems);
+        if (closest instanceof MerchantClient) {
+          if (
+            player.hasExt(ClientPositionable) &&
+            closest.hasExt(ClientPositionable) &&
+            distance(
+              player.getExt(ClientPositionable).getCenterPosition(),
+              closest.getExt(ClientPositionable).getCenterPosition(),
+            ) <= maxInteract &&
+            closest.getShopItems().length > 0
+          ) {
+            if (this.hud.isBankOpen()) {
+              if (this.hud.shouldCloseFullInventoryWhenTogglingBank()) {
+                this.hud.setInventoryScreenOpen(false);
+              } else {
+                this.hud.closeBank();
+              }
+              return;
+            }
+            const inventoryWasAlreadyOpen = this.hud.isInventoryScreenOpen();
+            this.hud.setInventoryScreenOpen(true);
+            this.hud.openMerchant(closest.getId(), inventoryWasAlreadyOpen);
             return;
           }
         }
@@ -613,10 +625,6 @@ export class GameClient {
 
   public getCameraManager(): CameraManager {
     return this.cameraManager;
-  }
-
-  public getMerchantBuyPanel(): MerchantBuyPanel {
-    return this.merchantBuyPanel;
   }
 
   /** Call on full game state so we don't toast quests already completed in that snapshot. */
@@ -953,7 +961,6 @@ export class GameClient {
   private updateCursorVisibility(): void {
     // Show cursor if any UI overlay is active
     if (
-      this.merchantBuyPanel.isVisible() ||
       this.craftingPanel.isVisible() ||
       (this.hud && this.hud.isFullscreenMapOpen()) ||
       (this.hud && this.hud.isHoveringInventory()) ||
@@ -1021,7 +1028,10 @@ export class GameClient {
       // Only play sounds if player has movement input (not just velocity from knockback)
       if (hasMovementInput) {
         const position = player.getPosition();
-        const soundType = input.sprint ? SOUND_TYPES_TO_MP3.RUN : SOUND_TYPES_TO_MP3.WALK;
+        const soundType =
+          input.sprint && !player.isOnSkateboard()
+            ? SOUND_TYPES_TO_MP3.RUN
+            : SOUND_TYPES_TO_MP3.WALK;
         this.soundManager.updateLoopingSound(playerId, soundType, position, listenerPos ?? undefined);
       } else {
         // Player is not moving intentionally, stop the sound

@@ -297,6 +297,8 @@ export class Player extends Entity {
         questStateJson: stringifyPlayerQuestState(emptyPlayerQuestState()),
         respawnBindTileX: -1,
         respawnBindTileY: -1,
+        /** 0 = not riding; 1..n = bag slot (1-based) that must contain the skateboard item. */
+        skateboardBagIndex1Based: 0,
       },
       () => this.markEntityDirty(),
       {
@@ -343,6 +345,7 @@ export class Player extends Entity {
         loadoutConsumable5: { numberType: "uint8" },
         respawnBindTileX: { numberType: "uint32", optional: true },
         respawnBindTileY: { numberType: "uint32", optional: true },
+        skateboardBagIndex1Based: { numberType: "uint8" },
         // Note: inputSequenceNumber is not in SerializableFields, so no metadata needed
       },
     );
@@ -542,6 +545,7 @@ export class Player extends Entity {
   onDeath(): void {
     this.setIsCrafting(false);
     this.cancelReload();
+    this.serialized.set("skateboardBagIndex1Based", 0);
 
     // In Battle Royale mode, drop all inventory items on death
     const strategy = this.getGameManagers().getGameServer().getGameLoop().getGameModeStrategy();
@@ -1585,6 +1589,10 @@ export class Player extends Entity {
 
     if (!this.serialized.get("inputFire")) return;
 
+    if (this.serialized.get("skateboardBagIndex1Based") > 0) {
+      return;
+    }
+
     // Zombie players can only use claw attacks
     if (this.isZombie()) {
       this.handleZombieClawAttack();
@@ -1793,7 +1801,9 @@ export class Player extends Entity {
         const isZombie = this.serialized.get("isZombie");
         const sneakInputActive = this.isSneakInputActive();
         const stamina = this.serialized.get("stamina");
+        const ridingSkateboard = this.serialized.get("skateboardBagIndex1Based") > 0;
         const canSprint =
+          !ridingSkateboard &&
           !isZombie &&
           this.hasAbility("sprint") &&
           !sneakInputActive &&
@@ -1811,13 +1821,15 @@ export class Player extends Entity {
             : 1;
         const trackStarMultiplier = this.hasAbility("trackStar") ? TRACK_STAR_SPEED_MULTIPLIER : 1;
         const sneakMultiplier = sneakInputActive ? SNEAK_MOVE_SPEED_MULTIPLIER : 1;
+        const skateMultiplier = ridingSkateboard ? getConfig().player.SKATEBOARD_SPEED_MULTIPLIER : 1;
         const speedMultiplier =
           sprintMultiplier *
           zombieMultiplier *
           runBonus *
           adrenalineMultiplier *
           trackStarMultiplier *
-          sneakMultiplier;
+          sneakMultiplier *
+          skateMultiplier;
 
         // Drain stamina while sprinting (unless infinite run is active)
         if (canSprint && !hasInfiniteRun) {
@@ -1964,6 +1976,8 @@ export class Player extends Entity {
       return;
     }
 
+    this.syncSkateboardRidingSlot();
+
     this.combatRollCooldown.update(deltaTime);
     this.handleAttack(deltaTime);
     this.handleMovement(deltaTime);
@@ -2029,10 +2043,48 @@ export class Player extends Entity {
     this.serialized.set("inputAimDistance", input.aimDistance ?? NaN); // NaN represents undefined
   }
 
+  /**
+   * Ride or dismount the skateboard in the given bag slot (0-based index).
+   * Called from CONSUME_ITEM when the slot holds a skateboard item.
+   */
+  public toggleSkateboardFromBagIndex(slot0: number): void {
+    if (this.isDead()) return;
+    const inventory = this.getExt(Inventory);
+    const item = inventory.getItems()[slot0];
+    if (!item || item.itemType !== "skateboard") return;
+
+    const slot1 = slot0 + 1;
+    const cur = this.serialized.get("skateboardBagIndex1Based") as number;
+    if (cur === slot1) {
+      this.serialized.set("skateboardBagIndex1Based", 0);
+      return;
+    }
+    if (cur !== 0) {
+      return;
+    }
+    this.serialized.set("skateboardBagIndex1Based", slot1);
+  }
+
+  private syncSkateboardRidingSlot(): void {
+    const cur = this.serialized.get("skateboardBagIndex1Based") as number;
+    if (cur <= 0) return;
+    const inventory = this.getExt(Inventory);
+    const max = inventory.getMaxSlots();
+    if (cur > max) {
+      this.serialized.set("skateboardBagIndex1Based", 0);
+      return;
+    }
+    const item = inventory.getItems()[cur - 1];
+    if (!item || item.itemType !== "skateboard") {
+      this.serialized.set("skateboardBagIndex1Based", 0);
+    }
+  }
+
   requestCombatRoll(aimAngle?: number): boolean {
     if (
       this.isDead() ||
       this.isZombie() ||
+      this.serialized.get("skateboardBagIndex1Based") > 0 ||
       this.hasExt(Snared) ||
       !this.hasAbility("combatRoll") ||
       !this.combatRollCooldown.isReady()

@@ -46,10 +46,19 @@ function DialogOverlay({
   )
 }
 
+function isComboboxTypeaheadPortalTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-combobox-typeahead-portal]"))
+  )
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -64,6 +73,20 @@ function DialogContent({
           className
         )}
         {...props}
+        onPointerDownOutside={(e) => {
+          if (isComboboxTypeaheadPortalTarget(e.target)) {
+            e.preventDefault()
+            return
+          }
+          onPointerDownOutside?.(e)
+        }}
+        onFocusOutside={(e) => {
+          if (isComboboxTypeaheadPortalTarget(e.target)) {
+            e.preventDefault()
+            return
+          }
+          onFocusOutside?.(e)
+        }}
       >
         {children}
         {showCloseButton && (

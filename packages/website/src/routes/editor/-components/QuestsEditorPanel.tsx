@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -24,6 +24,7 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import { Button } from "~/components/ui/button";
+import { ComboboxTypeahead } from "~/components/ui/combobox-typeahead";
 import { Input } from "~/components/ui/input";
 import { cn } from "~/lib/utils";
 import { useEditorStore } from "../-store";
@@ -133,108 +134,23 @@ function QuestOptionTypeahead({
   inputClassName?: string;
   listClassName?: string;
 }) {
-  const comboRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  const selectedLabel = useMemo(
-    () => options.find((o) => o.value === value)?.label ?? "",
-    [options, value],
-  );
-
-  useEffect(() => {
-    if (!open) setQuery(selectedLabel);
-  }, [selectedLabel, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      if (comboRef.current?.contains(e.target as Node)) return;
-      setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc, true);
-    return () => document.removeEventListener("mousedown", onDoc, true);
-  }, [open]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [...options];
-    return options.filter((o) => o.label.toLowerCase().includes(q));
-  }, [options, query]);
-
   const allowsEmpty = options.some((o) => o.value === "");
-  const hasResults = filtered.length > 0;
-  const compact = size === "compact";
-  const rowText = compact ? "text-[10px]" : "text-[11px]";
-
   return (
-    <div ref={comboRef} className="relative">
-      <Input
-        type="text"
-        autoComplete="off"
-        placeholder={placeholder}
-        disabled={disabled}
-        value={query}
-        onChange={(e) => {
-          const v = e.target.value;
-          setQuery(v);
-          setOpen(true);
-          const trimmed = v.trim();
-          if (!trimmed) {
-            if (allowsEmpty) onValueChange("");
-            return;
-          }
-          const exact = options.find(
-            (o) => o.label.toLowerCase() === trimmed.toLowerCase(),
-          );
-          if (exact) onValueChange(exact.value);
-        }}
-        onFocus={() => {
-          if (!disabled) setOpen(true);
-        }}
-        className={cn(
-          "rounded border-gray-600 bg-gray-950 px-2 py-1 text-gray-100 placeholder:text-gray-500",
-          compact ? "h-7 text-[10px]" : "h-8 text-[11px]",
-          inputClassName,
-        )}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      />
-      {open && !disabled ? (
-        <ul
-          className={cn(
-            "absolute left-0 right-0 top-full z-50 mt-0.5 max-h-60 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl",
-            listClassName,
-          )}
-          role="listbox"
-        >
-          {!hasResults ? (
-            <li className={cn("px-2 py-1.5 text-gray-500", rowText)}>No matches</li>
-          ) : (
-            filtered.map((o) => (
-              <li key={o.value === "" ? "__empty" : o.value}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={o.value === value}
-                  className={cn(
-                    "w-full px-2 py-1.5 text-left text-gray-200 hover:bg-gray-800",
-                    rowText,
-                  )}
-                  onMouseDown={(ev) => ev.preventDefault()}
-                  onClick={() => {
-                    onValueChange(o.value);
-                    setOpen(false);
-                  }}
-                >
-                  {o.label}
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      ) : null}
-    </div>
+    <ComboboxTypeahead
+      value={value}
+      onValueChange={onValueChange}
+      options={options}
+      placeholder={placeholder}
+      disabled={disabled}
+      size={size}
+      inputClassName={cn(
+        "rounded border-gray-600 bg-gray-950 text-gray-100 placeholder:text-gray-500",
+        inputClassName,
+      )}
+      listClassName={listClassName}
+      allowEmpty={allowsEmpty}
+      commitOnExactLabel
+    />
   );
 }
 

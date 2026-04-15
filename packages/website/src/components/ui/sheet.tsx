@@ -42,10 +42,19 @@ function SheetOverlay({
   )
 }
 
+function isComboboxTypeaheadPortalTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-combobox-typeahead-portal]"))
+  )
+}
+
 function SheetContent({
   className,
   children,
   side = "right",
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -68,6 +77,20 @@ function SheetContent({
           className
         )}
         {...props}
+        onPointerDownOutside={(e) => {
+          if (isComboboxTypeaheadPortalTarget(e.target)) {
+            e.preventDefault()
+            return
+          }
+          onPointerDownOutside?.(e)
+        }}
+        onFocusOutside={(e) => {
+          if (isComboboxTypeaheadPortalTarget(e.target)) {
+            e.preventDefault()
+            return
+          }
+          onFocusOutside?.(e)
+        }}
       >
         {children}
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">

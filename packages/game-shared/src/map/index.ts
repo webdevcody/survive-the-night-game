@@ -20,5 +20,6 @@ export * from "./spawn-palette";
 export * from "./world-map-types";
 export * from "./decal-palette";
 export * from "./collidable-tile-ids";
+export * from "./merchant-station-collidables";
 export * from "./world-map-resize";
 export * from "./world-map-sidecars";

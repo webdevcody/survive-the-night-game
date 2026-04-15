@@ -87,10 +87,13 @@ export class PredictionManager {
       isSneakInputActive: input.sneak,
     });
     const hasStamina = player.getStamina() > 0;
-    const canSprint = input.sprint && hasStamina && !sneakInput;
+    const ridingSkate = player.isOnSkateboard();
+    const canSprint = input.sprint && hasStamina && !sneakInput && !ridingSkate;
     const config = this.getConfig();
     const speedMultiplier =
-      (canSprint ? config.sprintMultiplier : 1) * (sneakInput ? SNEAK_MOVE_SPEED_MULTIPLIER : 1);
+      (canSprint ? config.sprintMultiplier : 1) *
+      (sneakInput ? SNEAK_MOVE_SPEED_MULTIPLIER : 1) *
+      (ridingSkate ? getConfig().player.SKATEBOARD_SPEED_MULTIPLIER : 1);
 
     const speed = config.playerSpeed * speedMultiplier;
     let moveX = direction.x * speed * deltaSeconds;

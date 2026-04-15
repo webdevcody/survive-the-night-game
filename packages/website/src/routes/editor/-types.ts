@@ -1,5 +1,6 @@
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
@@ -8,7 +9,7 @@ import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map
 export type Layer = "ground" | "collidables" | "spawns" | "decals";
 
 /** Right sidebar primary section (editor overlay). */
-export type EditorSidebarSection = "tiles" | "npcs" | "spawners" | "quests";
+export type EditorSidebarSection = "tiles" | "npcs" | "spawners" | "merchants" | "quests";
 
 /** Snapshot of all layers (undo / API). */
 export interface MapLayerSnapshot {
@@ -19,6 +20,8 @@ export interface MapLayerSnapshot {
   dialogueNpcs: WorldMapDialogueNpcEntry[];
   /** Added for message decals; absent in snapshots taken before this feature. */
   messageDecals?: WorldMapMessageDecalEntry[];
+  /** Added for per-tile merchant stock; absent in older snapshots. */
+  merchantMeta?: WorldMapMerchantEntry[];
   quests: WorldMapQuestDefinition[];
   spawnerMeta: WorldMapSpawnerMetaEntry[];
 }

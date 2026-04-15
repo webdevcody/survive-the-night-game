@@ -9,6 +9,7 @@ import { EditorMinimap } from "./-components/EditorMinimap";
 import { EditorRightOverlay } from "./-components/EditorRightOverlay";
 import { NpcConfigModal } from "./-components/NpcConfigModal";
 import { SpawnerMetaModal } from "./-components/SpawnerMetaModal";
+import { MerchantMetaModal } from "./-components/MerchantMetaModal";
 import { RelocateMapBanner } from "./-components/RelocateMapBanner";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import {
@@ -19,6 +20,7 @@ import {
 import {
   applyDialogueNpcEditorMetadataToRawDialogueNpcs,
   normalizeDialogueNpcs,
+  reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
@@ -68,6 +70,7 @@ function MapEditor() {
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
   const messageDecals = useEditorStore((state) => state.messageDecals);
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
+  const merchantMeta = useEditorStore((state) => state.merchantMeta);
   const quests = useEditorStore((state) => state.quests);
   const saveStatus = useEditorStore((state) => state.saveStatus);
 
@@ -130,6 +133,14 @@ function MapEditor() {
             n,
           ),
         );
+        useEditorStore.setState({
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            decalsLoaded,
+            worldMapData.collidables,
+            worldMapData.merchantMeta ?? [],
+            n,
+          ),
+        });
         clampCameraToViewport();
       } else {
         console.warn(
@@ -203,6 +214,7 @@ function MapEditor() {
         messageDecals,
         quests,
         spawnerMeta,
+        merchantMeta,
       });
       setSaveStatus("saved");
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -262,6 +274,7 @@ function MapEditor() {
 
       <NpcConfigModal />
       <SpawnerMetaModal />
+      <MerchantMetaModal />
       <RelocateMapBanner />
     </div>
   );

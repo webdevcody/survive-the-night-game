@@ -4,7 +4,7 @@ import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel"
 import { WorldPickerPanel } from "./play/-components/WorldPickerPanel";
 import { SpawnPanel } from "./play/-components/SpawnPanel";
 import { Button } from "~/components/ui/button";
-import { measureGameServerHealthPingMs, SELECTED_GAME_SERVER_WS_URL_KEY } from "~/utils/game-server-connect";
+import { fetchGameServerWorldPickerStats, SELECTED_GAME_SERVER_WS_URL_KEY } from "~/utils/game-server-connect";
 import { getGameAuthToken } from "~/fn/game-auth";
 import { requireSessionForPlayFn } from "~/fn/guards";
 import { authClient } from "~/lib/auth-client";
@@ -78,6 +78,7 @@ function GameClientLoader() {
   }>({ loaded: false, servers: [] });
   const [serverPickResolved, setServerPickResolved] = useState(false);
   const [serverPings, setServerPings] = useState<Record<number, number | null>>({});
+  const [serverPlayerCounts, setServerPlayerCounts] = useState<Record<number, number | null>>({});
   const [bookmarkedWorldNotice, setBookmarkedWorldNotice] = useState<string | null>(null);
 
   const handleLeaveGame = () => {
@@ -166,6 +167,7 @@ function GameClientLoader() {
       setServerRegistry({ loaded: false, servers: [] });
       setServerPickResolved(false);
       setServerPings({});
+      setServerPlayerCounts({});
       return;
     }
     let cancelled = false;
@@ -211,28 +213,56 @@ function GameClientLoader() {
     }
     let cancelled = false;
     let measureGen = 0;
+    let timeoutId: number | undefined;
+    const pingSamplesById: Record<number, number[]> = {};
+    let completedPolls = 0;
+
+    const average = (values: number[]): number | null => {
+      if (values.length === 0) return null;
+      return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+    };
 
     const measureOnce = async () => {
       const gen = ++measureGen;
-      const entries = await Promise.all(
-        serverRegistry.servers.map(
-          async (s) => [s.id, await measureGameServerHealthPingMs(s.publicWsUrl)] as const,
-        ),
+      const rows = await Promise.all(
+        serverRegistry.servers.map(async (s) => {
+          const { pingMs, playerCount } = await fetchGameServerWorldPickerStats(s.publicWsUrl);
+          if (pingMs != null) {
+            const prev = pingSamplesById[s.id] ?? [];
+            pingSamplesById[s.id] = [...prev, pingMs].slice(-5);
+          }
+          const avgPing = average(pingSamplesById[s.id] ?? []);
+          return [s.id, { ping: avgPing, playerCount }] as const;
+        }),
       );
       if (!cancelled && gen === measureGen) {
-        setServerPings(Object.fromEntries(entries));
+        setServerPings(Object.fromEntries(rows.map(([id, v]) => [id, v.ping])));
+        setServerPlayerCounts(Object.fromEntries(rows.map(([id, v]) => [id, v.playerCount])));
       }
     };
 
-    void measureOnce();
-    const intervalMs = 5000;
-    const intervalId = window.setInterval(() => {
-      void measureOnce();
-    }, intervalMs);
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const delayMs = completedPolls >= 5 ? 5000 : 1000;
+      timeoutId = window.setTimeout(runCycle, delayMs);
+    };
+
+    const runCycle = () => {
+      void (async () => {
+        await measureOnce();
+        if (cancelled) return;
+        completedPolls += 1;
+        scheduleNext();
+      })();
+    };
+
+    void runCycle();
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
     };
   }, [serverRegistry, serverPickResolved]);
 
@@ -448,6 +478,7 @@ function GameClientLoader() {
       <WorldPickerPanel
         worlds={serverRegistry.servers}
         pings={serverPings}
+        playerCounts={serverPlayerCounts}
         bookmarkNotice={bookmarkedWorldNotice}
         onContinueWithSelection={({ publicWsUrl, worldId }) => {
           try {

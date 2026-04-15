@@ -26,6 +26,9 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     | ((res: uWS.HttpResponse, req: uWS.HttpRequest) => void)
     | null = null;
 
+  /** Optional JSON payload for world-picker / monitoring (e.g. live player count). */
+  private publicStatusProvider: (() => { playerCount: number }) | null = null;
+
   constructor(
     httpServer: HttpServer | null,
     corsOptions?: { origin: string | string[]; methods: string[] }
@@ -53,6 +56,29 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
       res.writeHeader("Content-Type", "text/plain");
       corsHealth(res);
       res.end("ok");
+    });
+
+    const corsPublicStatus = (res: uWS.HttpResponse) => {
+      res.writeHeader("Access-Control-Allow-Origin", "*");
+      res.writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+    };
+
+    this.app.options("/public-status", (res: uWS.HttpResponse) => {
+      res.onAborted(() => {});
+      corsPublicStatus(res);
+      res.writeStatus("204 No Content");
+      res.end();
+    });
+
+    this.app.get("/public-status", (res: uWS.HttpResponse) => {
+      res.onAborted(() => {});
+      const provider = this.publicStatusProvider;
+      const playerCount = provider ? Math.max(0, Math.floor(provider().playerCount)) : 0;
+      const body = JSON.stringify({ playerCount });
+      res.writeStatus("200 OK");
+      res.writeHeader("Content-Type", "application/json; charset=utf-8");
+      corsPublicStatus(res);
+      res.end(body);
     });
 
     // Specific HTTP routes first (registration order matters in uWebSockets).
@@ -226,5 +252,9 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     handler: (res: uWS.HttpResponse, req: uWS.HttpRequest) => void
   ): void {
     this.editorReloadWorldMapHandler = handler;
+  }
+
+  setPublicStatusProvider(provider: () => { playerCount: number }): void {
+    this.publicStatusProvider = provider;
   }
 }

@@ -298,6 +298,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
     });
   }
 
+  /** True when server says this player is riding a skateboard (bag index 1-based in serialized field). */
+  public isOnSkateboard(): boolean {
+    return ((this as any).skateboardBagIndex1Based ?? 0) > 0;
+  }
+
   private getCurrentRenderImage(gameState: GameState): HTMLImageElement {
     const { facing } = this.input;
     const isMoving = this.getVelocity().x !== 0 || this.getVelocity().y !== 0;
@@ -305,6 +310,9 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
 
     if (this.isDead()) {
       return this.imageLoader.getWithDirection(assetKey, Direction.Down);
+    }
+    if (this.isOnSkateboard()) {
+      return this.imageLoader.getWithDirection(assetKey, facing);
     }
     if (!isMoving) {
       return this.imageLoader.getWithDirection(assetKey, facing);
@@ -470,6 +478,11 @@ export class PlayerClient extends ClientEntity implements IClientEntity, Rendera
       ctx.drawImage(image, -image.width / 2, -image.height / 2);
       ctx.globalAlpha = 1.0;
     } else {
+      if (this.isOnSkateboard()) {
+        const board = this.imageLoader.get(getItemAssetKey({ itemType: "skateboard", state: {} }));
+        const by = Math.round(renderPosition.y + 4);
+        ctx.drawImage(board, renderPosition.x, by);
+      }
       ctx.drawImage(image, renderPosition.x, renderPosition.y);
 
       // Equipped armor / wearables (body overlays), not bag-only items

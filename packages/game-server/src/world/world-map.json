@@ -230004,7 +230004,7 @@
       0,
       0,
       0,
-      0,
+      8,
       0,
       0,
       0,
@@ -264200,5 +264200,34 @@
     ]
   ],
   "messageDecals": [],
-  "spawnerMeta": []
+  "spawnerMeta": [],
+  "merchantMeta": [
+    {
+      "row": 123,
+      "col": 119,
+      "label": "Beginner's Shop",
+      "shopItems": [
+        {
+          "itemType": "pain_pills",
+          "price": 5
+        },
+        {
+          "itemType": "pistol_ammo",
+          "price": 4
+        },
+        {
+          "itemType": "baseball_bat",
+          "price": 20
+        },
+        {
+          "itemType": "knife",
+          "price": 10
+        },
+        {
+          "itemType": "bandage",
+          "price": 10
+        }
+      ]
+    }
+  ]
 }

@@ -198,6 +198,15 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
       buyable: true,
       price: 4,
     },
+    recipe: {
+      enabled: true,
+      components: [{ type: "dirty_water", count: 1 }],
+      resultCount: 1,
+      profession: "cooking",
+      unlockLevel: 1,
+      station: "campfire",
+      professionXp: 4,
+    },
   },
   scrap_metal_bundle: {
     id: "scrap_metal_bundle",
@@ -296,6 +305,24 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
       unlockLevel: 1,
       station: "workbench",
       professionXp: 4,
+    },
+  },
+  dirty_water: {
+    id: "dirty_water",
+    assets: {
+      assetKey: "dirty_water",
+      x: 160,
+      y: 160,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
     },
   },
 };

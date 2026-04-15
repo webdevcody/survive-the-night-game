@@ -5,11 +5,18 @@ export function RelocateMapBanner() {
   const npcFrom = useEditorStore((s) => s.dialogueNpcRelocateFrom);
   const spawnerFrom = useEditorStore((s) => s.spawnerRelocateFrom);
   const questPick = useEditorStore((s) => s.questWaypointPickTarget);
+  const merchantRelocate = useEditorStore((s) => s.merchantRelocateFrom);
+  const merchantPlace = useEditorStore((s) => s.merchantPlaceMode);
 
-  if (!npcFrom && !spawnerFrom && !questPick) return null;
+  if (!npcFrom && !spawnerFrom && !questPick && !merchantRelocate && !merchantPlace) return null;
 
   let label: string;
-  if (npcFrom) {
+  if (merchantRelocate) {
+    label = `Relocate merchant from (${merchantRelocate.row}, ${merchantRelocate.col}) — click a tile with empty decal and/or collidable slots as needed for this shop. Press Esc to cancel.`;
+  } else if (merchantPlace) {
+    label =
+      "Place merchant — click a map tile to add a shopkeeper (decals). Press Esc to cancel.";
+  } else if (npcFrom) {
     label = `Relocate dialogue NPC from (${npcFrom.row}, ${npcFrom.col}) — click an empty spawns tile. Press Esc to cancel.`;
   } else if (spawnerFrom) {
     label = `Relocate spawner from (${spawnerFrom.row}, ${spawnerFrom.col}) — click an empty spawns tile. Press Esc to cancel.`;

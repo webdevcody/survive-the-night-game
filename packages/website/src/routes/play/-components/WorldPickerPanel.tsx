@@ -11,9 +11,17 @@ export type WorldPickerSelection = {
   publicWsUrl: string;
 };
 
+function pingLatencyDotClass(ping: number): string {
+  if (ping < 100) return "bg-green-500";
+  if (ping < 200) return "bg-yellow-400";
+  if (ping < 300) return "bg-red-500";
+  return "bg-red-600";
+}
+
 type WorldPickerPanelProps = {
   worlds: RegistryWorldRow[];
   pings: Record<number, number | null>;
+  playerCounts: Record<number, number | null>;
   bookmarkNotice?: string | null;
   onContinueWithSelection: (selection: WorldPickerSelection) => void;
 };
@@ -21,6 +29,7 @@ type WorldPickerPanelProps = {
 export function WorldPickerPanel({
   worlds,
   pings,
+  playerCounts,
   bookmarkNotice,
   onContinueWithSelection,
 }: WorldPickerPanelProps) {
@@ -60,6 +69,8 @@ export function WorldPickerPanel({
             const label = w.displayName?.trim() || `World ${w.id}`;
             const ping = pings[w.id];
             const pingLabel = ping != null ? `${ping} ms` : "—";
+            const players = playerCounts[w.id];
+            const playersLabel = players != null ? String(players) : "—";
             return (
               <li
                 key={w.id}
@@ -68,7 +79,23 @@ export function WorldPickerPanel({
                 <div className="min-w-0 text-left">
                   <div className="font-medium">{label}</div>
                   <div className="truncate text-muted-foreground text-xs">{w.publicWsUrl}</div>
-                  <div className="text-muted-foreground text-xs">Ping: {pingLabel}</div>
+                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    {ping != null ? (
+                      <span
+                        className={`inline-block size-2 shrink-0 rounded-full shadow-sm ${pingLatencyDotClass(ping)}`}
+                        title={`Latency ${ping} ms`}
+                        aria-hidden
+                      />
+                    ) : (
+                      <span
+                        className="inline-block size-2 shrink-0 rounded-full bg-muted-foreground/30"
+                        aria-hidden
+                      />
+                    )}
+                    <span>
+                      Ping: {pingLabel} · Players online: {playersLabel}
+                    </span>
+                  </div>
                 </div>
                 <Button
                   type="button"

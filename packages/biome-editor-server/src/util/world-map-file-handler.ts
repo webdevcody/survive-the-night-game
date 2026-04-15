@@ -7,6 +7,7 @@ import { resizeSquareLayersTopLeft } from "@survive-the-night/game-shared/map/wo
 import type {
   WorldMapDialogueNpcEditorMetadata,
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
@@ -15,6 +16,7 @@ import {
   extractDialogueNpcEditorMetadataForQuestsJson,
   normalizeDialogueNpcs,
   parseDialogueNpcEditorMetadataFromQuestsSidecar,
+  reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
@@ -94,6 +96,8 @@ export interface WorldMapData {
   quests?: WorldMapQuestDefinition[];
   /** Optional labels for non-dialogue spawner tiles (editor + future runtime use). */
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
+  /** Per-tile merchant stock overrides (saved in main world-map.json). */
+  merchantMeta?: WorldMapMerchantEntry[];
   /** From `world-map-quests.json` (`dialogueNpcEditorMetadata`); merge into NPCs before `normalizeDialogueNpcs`. */
   dialogueNpcEditorMetadata?: WorldMapDialogueNpcEditorMetadata[];
 }
@@ -154,6 +158,7 @@ export function createEmptyWorldMap(): WorldMapData {
     messageDecals: [],
     quests: [],
     spawnerMeta: [],
+    merchantMeta: [],
   };
 }
 
@@ -227,15 +232,22 @@ export async function readWorldMap(): Promise<WorldMapData> {
     );
     const quests = normalizeQuests(dataWithSidecars.quests, n);
     const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
+    const merchantMeta = reconcileMerchantMetaWithMerchantTiles(
+      decals,
+      data.collidables,
+      data.merchantMeta,
+      n,
+    );
     return {
-      ground: dataWithSidecars.ground,
-      collidables: dataWithSidecars.collidables,
+      ground: data.ground,
+      collidables: data.collidables,
       spawns,
       decals,
       dialogueNpcs,
       messageDecals,
       quests,
       spawnerMeta,
+      merchantMeta,
       dialogueNpcEditorMetadata: editorMeta,
     };
   } catch (e: unknown) {
@@ -383,6 +395,12 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
   );
   const quests = normalizeQuests(dataWithSidecars.quests, oldN);
   const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
+  const merchantMeta = reconcileMerchantMetaWithMerchantTiles(
+    decals,
+    dataWithSidecars.collidables!,
+    dataWithSidecars.merchantMeta,
+    oldN,
+  );
   return {
     ground: dataWithSidecars.ground!,
     collidables: dataWithSidecars.collidables!,
@@ -392,6 +410,7 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
     messageDecals,
     quests,
     spawnerMeta,
+    merchantMeta,
   };
 }
 
@@ -464,6 +483,12 @@ export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorld
     ),
     quests: raw.quests ?? [],
     spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(resized.spawns, raw.spawnerMeta),
+    merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+      resized.decals,
+      resized.collidables,
+      raw.merchantMeta,
+      newN,
+    ),
   };
 
   const previousConfigText = await fs.readFile(WORLD_CONFIG_PATH, "utf-8");

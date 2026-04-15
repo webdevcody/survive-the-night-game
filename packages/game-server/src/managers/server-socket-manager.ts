@@ -127,6 +127,10 @@ export class ServerSocketManager implements Broadcaster {
       });
     }
 
+    (this.io as UWebSocketsServerAdapter).setPublicStatusProvider(() => ({
+      playerCount: this.players.size,
+    }));
+
     // Initialize chat command registry
     this.chatCommandRegistry = createCommandRegistry();
 

@@ -5,7 +5,8 @@ import {
   NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
   NPC_HEALER_DIALOGUE_SPAWN_TILE_ID,
 } from "./spawn-palette";
-import { DECAL_TILE_MESSAGE } from "./decal-palette";
+import { DECAL_TILE_MESSAGE, DECAL_TILE_SHOPKEEPER } from "./decal-palette";
+import { COLLIDABLE_TILE_MERCHANT } from "./collidable-tile-ids";
 import type { PlayerQuestStatePayload } from "../quests/player-quest-state";
 import { emptyPlayerQuestState, getActiveStepIndex } from "../quests/player-quest-state";
 import type { WorldMapQuestDefinition } from "./quest-types";
@@ -168,6 +169,134 @@ export function reconcileSpawnerMetaWithSpawnsLayer(
     for (let c = 0; c < n; c++) {
       const id = row[c] ?? 0;
       if (id > 0 && !isNpcDialogueSpawnTile(id)) {
+        eligible.add(`${r},${c}`);
+      }
+    }
+  }
+  return normalized.filter((e) => eligible.has(`${e.row},${e.col}`));
+}
+
+/** One line in a merchant's authored stock (buy price in coins, before balance surcharges). */
+export interface WorldMapMerchantShopLine {
+  itemType: string;
+  price: number;
+}
+
+/** Per-tile merchant stock when the map author overrides the global buyable-items catalog. */
+export interface WorldMapMerchantEntry {
+  row: number;
+  col: number;
+  /** Editor-only; not used in-game. Helps find merchants in the map editor. */
+  label?: string;
+  /**
+   * When set (including `[]`), replaces the global buy catalog for this tile.
+   * When omitted, the merchant uses the global catalog (label-only rows are allowed).
+   */
+  shopItems?: WorldMapMerchantShopLine[];
+}
+
+export const MERCHANT_META_MAX_SHOP_LINES = 64;
+export const MERCHANT_META_PRICE_MAX = 1_000_000;
+export const MERCHANT_META_ITEM_TYPE_MAX = 64;
+export const MERCHANT_META_LABEL_MAX = 48;
+
+function clampMerchantPrice(raw: unknown): number | null {
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return null;
+  }
+  const n = Math.trunc(raw);
+  if (n < 0 || n > MERCHANT_META_PRICE_MAX) {
+    return null;
+  }
+  return n;
+}
+
+/**
+ * Parses `merchantMeta` from map JSON. Invalid rows and shop lines are skipped.
+ * Duplicate (row,col) entries: last one wins.
+ */
+export function normalizeMerchantMeta(
+  entries: unknown,
+  mapSide: number,
+): WorldMapMerchantEntry[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  const byKey = new Map<string, WorldMapMerchantEntry>();
+  for (const e of entries) {
+    if (!e || typeof e !== "object") continue;
+    const row = (e as WorldMapMerchantEntry).row;
+    const col = (e as WorldMapMerchantEntry).col;
+    if (
+      typeof row !== "number" ||
+      typeof col !== "number" ||
+      !Number.isInteger(row) ||
+      !Number.isInteger(col) ||
+      row < 0 ||
+      col < 0 ||
+      row >= mapSide ||
+      col >= mapSide
+    ) {
+      continue;
+    }
+    const rec = e as Record<string, unknown>;
+    let label: string | undefined;
+    if (typeof rec.label === "string") {
+      const t = rec.label.trim();
+      if (t) label = t.slice(0, MERCHANT_META_LABEL_MAX);
+    }
+
+    const hasShopItemsKey = Object.prototype.hasOwnProperty.call(rec, "shopItems");
+    let shopItems: WorldMapMerchantShopLine[] | undefined;
+    if (hasShopItemsKey) {
+      const rawLines = rec.shopItems;
+      if (!Array.isArray(rawLines)) {
+        continue;
+      }
+      shopItems = [];
+      const seenTypes = new Set<string>();
+      for (const line of rawLines) {
+        if (shopItems.length >= MERCHANT_META_MAX_SHOP_LINES) break;
+        if (!line || typeof line !== "object") continue;
+        const itemType = String((line as WorldMapMerchantShopLine).itemType ?? "")
+          .trim()
+          .slice(0, MERCHANT_META_ITEM_TYPE_MAX);
+        if (!itemType) continue;
+        const price = clampMerchantPrice((line as WorldMapMerchantShopLine).price);
+        if (price === null) continue;
+        if (seenTypes.has(itemType)) continue;
+        seenTypes.add(itemType);
+        shopItems.push({ itemType, price });
+      }
+    }
+
+    if (!label && shopItems === undefined) {
+      continue;
+    }
+
+    const entry: WorldMapMerchantEntry = { row, col };
+    if (label) entry.label = label;
+    if (shopItems !== undefined) entry.shopItems = shopItems;
+    byKey.set(`${row},${col}`, entry);
+  }
+  return [...byKey.values()].sort((a, b) => a.row - b.row || a.col - b.col);
+}
+
+/** Drops merchant meta for tiles that are no longer a shopkeeper decal or merchant collidable. */
+export function reconcileMerchantMetaWithMerchantTiles(
+  decals: number[][],
+  collidables: number[][],
+  rawMeta: unknown,
+  mapSide: number,
+): WorldMapMerchantEntry[] {
+  const normalized = normalizeMerchantMeta(rawMeta, mapSide);
+  const eligible = new Set<string>();
+  for (let r = 0; r < mapSide; r++) {
+    const drow = decals[r];
+    const crow = collidables[r];
+    if (!drow || !crow) continue;
+    for (let c = 0; c < mapSide; c++) {
+      if (drow[c] === DECAL_TILE_SHOPKEEPER || crow[c] === COLLIDABLE_TILE_MERCHANT) {
         eligible.add(`${r},${c}`);
       }
     }

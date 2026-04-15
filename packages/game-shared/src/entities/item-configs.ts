@@ -1003,4 +1003,27 @@ export const ITEM_CONFIGS: Record<string, ItemConfig> = {
     },
     autoPickup: false,
   },
+  skateboard: {
+    id: "skateboard",
+    category: "placeable",
+    assets: {
+      assetKey: "skateboard",
+      x: 128,
+      y: 208,
+      sheet: "items",
+    },
+    spawn: { enabled: false, chance: 0 },
+    merchant: { enabled: false, buyable: false, price: 0 },
+    recipe: {
+      enabled: true,
+      components: [
+        { type: "wood", count: 2 },
+        { type: "cloth", count: 1 },
+      ],
+      profession: "crafting",
+      unlockLevel: 1,
+      station: "workbench",
+      professionXp: 8,
+    },
+  },
 };

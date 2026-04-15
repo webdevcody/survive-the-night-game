@@ -120,19 +120,12 @@ export class ClientEventHandlers {
 
     const gameState = this.gameClient.getGameState();
     const hud = this.gameClient.getHud();
-    const merchantBuyPanel = this.gameClient.getMerchantBuyPanel();
     const craftingPanel = this.gameClient.getCraftingPanel();
     const placementManager = this.gameClient.getPlacementManager();
     const isFullscreenMapOpen = hud?.isFullscreenMapOpen() ?? false;
     const isNpcDialogueOpen = gameState.openDialogueNpcId != null;
 
     if (craftingPanel.isVisible() && craftingPanel.handleClick(x, y)) {
-      placementManager?.skipNextClick();
-      return;
-    }
-
-    // Check merchant panel clicks (if open)
-    if (merchantBuyPanel.isVisible() && merchantBuyPanel.handleClick(x, y)) {
       placementManager?.skipNextClick();
       return;
     }

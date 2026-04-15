@@ -51,6 +51,11 @@ export const playerConfig = {
   SPRINT_MULTIPLIER: 1.5,
 
   /**
+   * Speed multiplier while riding a skateboard (sprint disabled; applied on top of other movement multipliers except sprint).
+   */
+  SKATEBOARD_SPEED_MULTIPLIER: 1.45,
+
+  /**
    * Maximum stamina points (base; character stat points add on top)
    */
   MAX_STAMINA: 20,

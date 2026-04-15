@@ -20,19 +20,27 @@ import {
 import type { DecalData } from "@survive-the-night/game-shared/config/decals-config";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
   normalizeDialogueNpcs,
   normalizeMessageDecals,
+  reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
+  MERCHANT_META_ITEM_TYPE_MAX,
+  MERCHANT_META_LABEL_MAX,
+  MERCHANT_META_MAX_SHOP_LINES,
+  MERCHANT_META_PRICE_MAX,
   SPAWNER_META_RESPAWN_INTERVAL_SEC_MAX,
   SPAWNER_META_RESPAWN_INTERVAL_SEC_MIN,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { QuestStep, WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import { createQuestDefinitionDraft } from "@survive-the-night/game-shared/map/quest-types";
+import { DECAL_TILE_SHOPKEEPER } from "@survive-the-night/game-shared/map/decal-palette";
+import { COLLIDABLE_TILE_MERCHANT } from "@survive-the-night/game-shared/map/collidable-tile-ids";
 import {
   DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
   ITEM_SPAWN_TILE_ID_MIN,
@@ -45,6 +53,26 @@ import {
 import { reconcileDialogueNpcsWithSpawnsLayer } from "./-utils";
 
 const MAX_UNDO_HISTORY = 20;
+
+function normalizeMerchantShopLinesForStore(
+  raw: { itemType: string; price: number }[],
+): { itemType: string; price: number }[] {
+  const seen = new Set<string>();
+  const out: { itemType: string; price: number }[] = [];
+  for (const x of raw) {
+    if (out.length >= MERCHANT_META_MAX_SHOP_LINES) break;
+    const itemType = String(x.itemType ?? "")
+      .trim()
+      .slice(0, MERCHANT_META_ITEM_TYPE_MAX);
+    if (!itemType || seen.has(itemType)) continue;
+    let price = Math.trunc(Number(x.price));
+    if (!Number.isFinite(price)) continue;
+    price = Math.max(0, Math.min(MERCHANT_META_PRICE_MAX, price));
+    seen.add(itemType);
+    out.push({ itemType, price });
+  }
+  return out;
+}
 
 export const EDITOR_BRUSH_MIN = 1;
 export const EDITOR_BRUSH_MAX = 5;
@@ -223,6 +251,8 @@ interface EditorState {
   messageDecals: WorldMapMessageDecalEntry[];
   /** Optional display names for non-dialogue spawner tiles. */
   spawnerMeta: WorldMapSpawnerMetaEntry[];
+  /** Optional per-tile merchant stock overrides. */
+  merchantMeta: WorldMapMerchantEntry[];
   /** Authored quests saved in world-map.json. */
   quests: WorldMapQuestDefinition[];
   /** Quest to auto-open/highlight in the quests sidebar. */
@@ -249,8 +279,12 @@ interface EditorState {
   dialogueNpcRelocateFrom: { row: number; col: number } | null;
   /** Configure spawner label (sidebar / list). */
   spawnerConfigModal: { row: number; col: number } | null;
+  /** Configure merchant stock for a shopkeeper / merchant collidable tile. */
+  merchantConfigModal: { row: number; col: number } | null;
   /** When set, next map click (empty spawns cell) moves this non-dialogue spawner tile + label. */
   spawnerRelocateFrom: { row: number; col: number } | null;
+  /** When set, next map click on a valid empty tile moves shopkeeper decal / merchant collidable + meta. */
+  merchantRelocateFrom: { row: number; col: number } | null;
   /** When set, next map click sets `reach_waypoint` row/col for this quest step. */
   questWaypointPickTarget: { questId: string; stepIndex: number } | null;
   /** Right overlay: tiles palette vs lists vs quests. */
@@ -259,6 +293,8 @@ interface EditorState {
   spawnerSidebarMode: "select" | "place";
   /** Spawns-layer tile id to paint in place mode (`SPAWNER_META_CONFIGURABLE_ENTRIES`). */
   spawnerPlaceTileId: number | null;
+  /** Merchants tab: next map click places a shopkeeper decal, then turns off. */
+  merchantPlaceMode: boolean;
 
   // Palette selection (collidables)
   isPaletteSelectionMode: boolean;
@@ -316,6 +352,7 @@ interface EditorState {
   setDialogueNpcs: (entries: WorldMapDialogueNpcEntry[]) => void;
   setMessageDecals: (entries: WorldMapMessageDecalEntry[]) => void;
   setSpawnerMeta: (entries: WorldMapSpawnerMetaEntry[]) => void;
+  setMerchantMeta: (entries: WorldMapMerchantEntry[]) => void;
   setQuests: (quests: WorldMapQuestDefinition[]) => void;
   createQuestDraft: (title?: string) => string;
   setFocusedQuestId: (questId: string | null) => void;
@@ -348,6 +385,18 @@ interface EditorState {
   startDialogueNpcRelocate: (row: number, col: number) => void;
   cancelDialogueNpcRelocate: () => void;
   setSpawnerConfigModal: (cell: { row: number; col: number } | null) => void;
+  setMerchantConfigModal: (cell: { row: number; col: number } | null) => void;
+  setMerchantShopLinesAt: (
+    row: number,
+    col: number,
+    shopItems: { itemType: string; price: number }[],
+  ) => void;
+  clearMerchantOverrideAt: (row: number, col: number) => void;
+  /** Editor-only label; trims and caps length. Removing label clears the meta row if no custom stock. */
+  updateMerchantLabelAt: (row: number, col: number, rawLabel: string) => void;
+  openMerchantMetaEditor: (row: number, col: number) => void;
+  startMerchantRelocate: (row: number, col: number) => void;
+  cancelMerchantRelocate: () => void;
   startSpawnerRelocate: (row: number, col: number) => void;
   cancelSpawnerRelocate: () => void;
   startQuestWaypointPick: (questId: string, stepIndex: number) => void;
@@ -363,6 +412,11 @@ interface EditorState {
   focusCameraOnMapCell: (row: number, col: number) => void;
   addDialogueNpcAtTile: (row: number, col: number) => void;
   addItemSpawnerAtTile: (row: number, col: number) => void;
+  /** Context menu / quick add: shopkeeper decal on decals layer (opens stock editor if already a shop). */
+  addMerchantAtTile: (row: number, col: number) => void;
+  /** Clears shopkeeper decal and/or merchant collidable at this tile; drops custom stock meta. */
+  removeMerchantAtTile: (row: number, col: number) => void;
+  setMerchantPlaceMode: (enabled: boolean) => void;
   /** Select spawns layer and open NPC modal (no grid change). */
   openDialogueNpcEditor: (row: number, col: number) => void;
   /** Open spawner metadata modal and spawns sidebar (no grid change). */
@@ -447,6 +501,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   dialogueNpcs: [],
   messageDecals: [],
   spawnerMeta: [],
+  merchantMeta: [],
   quests: [],
   focusedQuestId: null,
   activeLayer: "ground",
@@ -460,11 +515,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   npcConfigModal: null,
   dialogueNpcRelocateFrom: null,
   spawnerConfigModal: null,
+  merchantConfigModal: null,
   spawnerRelocateFrom: null,
+  merchantRelocateFrom: null,
   questWaypointPickTarget: null,
   sidebarSection: "tiles",
   spawnerSidebarMode: "select",
   spawnerPlaceTileId: null,
+  merchantPlaceMode: false,
   isPaletteSelectionMode: false,
   paletteSelectionStart: null,
   paletteSelectionCurrent: null,
@@ -504,16 +562,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({ brushSize: clamp(s.brushSize - 1, EDITOR_BRUSH_MIN, EDITOR_BRUSH_MAX) })),
 
   setGroundGrid: (grid) => set({ groundGrid: grid }),
-  setCollidablesGrid: (grid) => set({ collidablesGrid: grid }),
+  setCollidablesGrid: (grid) =>
+    set((s) => ({
+      collidablesGrid: grid,
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        s.decalsGrid,
+        grid,
+        s.merchantMeta,
+        grid.length,
+      ),
+    })),
   setSpawnsGrid: (grid) =>
     set((s) => ({
       spawnsGrid: grid,
       spawnerMeta: reconcileSpawnerMetaWithSpawnsLayer(grid, s.spawnerMeta),
     })),
-  setDecalsGrid: (grid) => set({ decalsGrid: grid }),
+  setDecalsGrid: (grid) =>
+    set((s) => ({
+      decalsGrid: grid,
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        grid,
+        s.collidablesGrid,
+        s.merchantMeta,
+        grid.length,
+      ),
+    })),
   setDialogueNpcs: (entries) => set({ dialogueNpcs: entries }),
   setMessageDecals: (entries) => set({ messageDecals: entries }),
   setSpawnerMeta: (entries) => set({ spawnerMeta: entries }),
+  setMerchantMeta: (entries) => set({ merchantMeta: entries }),
   setQuests: (quests) =>
     set((state) => {
       const focusedQuestId =
@@ -583,10 +660,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     saveToHistory();
     const mapSize = getMapSideLength(groundGrid);
     const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
-    set({
+    set((s) => ({
       decalsGrid: newGrid,
       messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, messageDecals, mapSize),
-    });
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        newGrid,
+        s.collidablesGrid,
+        s.merchantMeta,
+        mapSize,
+      ),
+    }));
   },
   removeDialogueNpcAt: (row, col) => {
     const {
@@ -637,6 +720,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             questWaypointPickTarget: null,
           }
         : {}),
+      ...(layer !== "decals" && layer !== "collidables" ? { merchantRelocateFrom: null } : {}),
     }),
   setSelectedTileId: (id) => set({ selectedTileId: id }),
   setExportText: (text) => set({ exportText: text }),
@@ -657,6 +741,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcRelocateFrom: { row, col },
       npcConfigModal: null,
       spawnerRelocateFrom: null,
+      merchantRelocateFrom: null,
       questWaypointPickTarget: null,
       activeLayer: "spawns",
       selectedTileId,
@@ -674,13 +759,94 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnerConfigModal: cell,
       ...(cell === null ? { spawnerRelocateFrom: null } : {}),
     }),
+  setMerchantConfigModal: (cell) =>
+    set({
+      merchantConfigModal: cell,
+      ...(cell === null ? { merchantRelocateFrom: null } : {}),
+    }),
+  setMerchantShopLinesAt: (row, col, shopItems) => {
+    const { saveToHistory, merchantMeta, decalsGrid, collidablesGrid, groundGrid } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const normalized = normalizeMerchantShopLinesForStore(shopItems);
+    const prev = merchantMeta.find((e) => e.row === row && e.col === col);
+    const rest = merchantMeta.filter((e) => !(e.row === row && e.col === col));
+    const nextEntry: WorldMapMerchantEntry = { row, col, shopItems: normalized };
+    const prevLabel = prev?.label?.trim().slice(0, MERCHANT_META_LABEL_MAX);
+    if (prevLabel) nextEntry.label = prevLabel;
+    const merged: WorldMapMerchantEntry[] = [...rest, nextEntry];
+    set({
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        decalsGrid,
+        collidablesGrid,
+        merged,
+        mapSize,
+      ),
+    });
+  },
+  clearMerchantOverrideAt: (row, col) => {
+    const { saveToHistory, merchantMeta, decalsGrid, collidablesGrid, groundGrid } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const existing = merchantMeta.find((e) => e.row === row && e.col === col);
+    const rest = merchantMeta.filter((e) => !(e.row === row && e.col === col));
+    const keptLabel = existing?.label?.trim().slice(0, MERCHANT_META_LABEL_MAX);
+    const nextMeta: WorldMapMerchantEntry[] =
+      keptLabel && keptLabel.length > 0 ? [...rest, { row, col, label: keptLabel }] : rest;
+    set({
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        decalsGrid,
+        collidablesGrid,
+        nextMeta,
+        mapSize,
+      ),
+    });
+  },
+  updateMerchantLabelAt: (row, col, rawLabel) => {
+    const { saveToHistory, merchantMeta, decalsGrid, collidablesGrid, groundGrid } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const label = String(rawLabel ?? "")
+      .trim()
+      .slice(0, MERCHANT_META_LABEL_MAX);
+    const existing = merchantMeta.find((e) => e.row === row && e.col === col);
+    const rest = merchantMeta.filter((e) => !(e.row === row && e.col === col));
+    const shopItems = existing?.shopItems;
+
+    if (!label && shopItems === undefined) {
+      set({
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          decalsGrid,
+          collidablesGrid,
+          rest,
+          mapSize,
+        ),
+      });
+      return;
+    }
+
+    const next: WorldMapMerchantEntry = { row, col };
+    if (label) next.label = label;
+    if (shopItems !== undefined) next.shopItems = shopItems;
+
+    set({
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        decalsGrid,
+        collidablesGrid,
+        [...rest, next],
+        mapSize,
+      ),
+    });
+  },
   startSpawnerRelocate: (row, col) => {
     const id = get().spawnsGrid[row]?.[col] ?? 0;
     if (id <= 0 || isNpcDialogueSpawnTile(id)) return;
     set({
       spawnerRelocateFrom: { row, col },
       spawnerConfigModal: null,
+      merchantConfigModal: null,
       dialogueNpcRelocateFrom: null,
+      merchantRelocateFrom: null,
       questWaypointPickTarget: null,
       activeLayer: "spawns",
       selectedTileId: id,
@@ -702,6 +868,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       questWaypointPickTarget: { questId, stepIndex },
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
+      merchantRelocateFrom: null,
     });
   },
   cancelQuestWaypointPick: () => set({ questWaypointPickTarget: null }),
@@ -713,6 +880,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             sidebarSection: section,
             ...(section !== "spawners"
               ? { spawnerSidebarMode: "select" as const, spawnerPlaceTileId: null }
+              : {}),
+            ...(section !== "merchants"
+              ? { merchantPlaceMode: false, merchantRelocateFrom: null }
               : {}),
           },
     ),
@@ -848,7 +1018,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedSpawnCell: { row, col },
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
+      merchantConfigModal: null,
       spawnerRelocateFrom: null,
+      merchantRelocateFrom: null,
       questWaypointPickTarget: null,
       sidebarSection: "npcs",
     });
@@ -861,12 +1033,59 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedSpawnCell: { row, col },
         spawnerConfigModal: { row, col },
         npcConfigModal: null,
+        merchantConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
+        merchantRelocateFrom: null,
         questWaypointPickTarget: null,
         sidebarSection: "spawners" as const,
         ...(id > 0 ? { selectedTileId: id } : {}),
       };
+    });
+  },
+  openMerchantMetaEditor: (row, col) => {
+    const { decalsGrid, collidablesGrid } = get();
+    const decalId = decalsGrid[row]?.[col] ?? 0;
+    const isDecalMerchant = decalId === DECAL_TILE_SHOPKEEPER;
+    set({
+      merchantConfigModal: { row, col },
+      sidebarSection: "merchants",
+      merchantPlaceMode: false,
+      merchantRelocateFrom: null,
+      npcConfigModal: null,
+      spawnerConfigModal: null,
+      spawnerRelocateFrom: null,
+      dialogueNpcRelocateFrom: null,
+      questWaypointPickTarget: null,
+      activeLayer: isDecalMerchant ? "decals" : "collidables",
+      selectedTileId: isDecalMerchant ? DECAL_TILE_SHOPKEEPER : COLLIDABLE_TILE_MERCHANT,
+    });
+  },
+  startMerchantRelocate: (row, col) => {
+    const { decalsGrid, collidablesGrid } = get();
+    const decalId = decalsGrid[row]?.[col] ?? 0;
+    const collId = collidablesGrid[row]?.[col] ?? -1;
+    const isMerchant =
+      decalId === DECAL_TILE_SHOPKEEPER || collId === COLLIDABLE_TILE_MERCHANT;
+    if (!isMerchant) return;
+    const isDecalMerchant = decalId === DECAL_TILE_SHOPKEEPER;
+    set({
+      merchantRelocateFrom: { row, col },
+      merchantConfigModal: null,
+      dialogueNpcRelocateFrom: null,
+      spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
+      merchantPlaceMode: false,
+      sidebarSection: "merchants",
+      activeLayer: isDecalMerchant ? "decals" : "collidables",
+      selectedTileId: isDecalMerchant ? DECAL_TILE_SHOPKEEPER : COLLIDABLE_TILE_MERCHANT,
+    });
+  },
+  cancelMerchantRelocate: () => {
+    const from = get().merchantRelocateFrom;
+    set({
+      merchantRelocateFrom: null,
+      ...(from ? { merchantConfigModal: { row: from.row, col: from.col } } : {}),
     });
   },
   addDialogueNpcAtTile: (row, col) => {
@@ -900,6 +1119,93 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sidebarSection: "npcs",
     }));
   },
+  addMerchantAtTile: (row, col) => {
+    const { decalsGrid, groundGrid, saveToHistory } = get();
+    const current = decalsGrid[row]?.[col] ?? 0;
+    if (current === DECAL_TILE_SHOPKEEPER) {
+      get().openMerchantMetaEditor(row, col);
+      return;
+    }
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const newGrid = replaceCellInGrid(decalsGrid, row, col, DECAL_TILE_SHOPKEEPER);
+    set((s) => ({
+      decalsGrid: newGrid,
+      messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, s.messageDecals, mapSize),
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        newGrid,
+        s.collidablesGrid,
+        s.merchantMeta,
+        mapSize,
+      ),
+      activeLayer: "decals",
+      selectedTileId: DECAL_TILE_SHOPKEEPER,
+      sidebarSection: "merchants",
+      selectedDecalCell: null,
+      merchantPlaceMode: false,
+    }));
+  },
+  removeMerchantAtTile: (row, col) => {
+    const { decalsGrid, collidablesGrid, groundGrid, saveToHistory } = get();
+    const decalId = decalsGrid[row]?.[col] ?? 0;
+    const collId = collidablesGrid[row]?.[col] ?? -1;
+    const hadShopkeeperDecal = decalId === DECAL_TILE_SHOPKEEPER;
+    const hadMerchantCollidable = collId === COLLIDABLE_TILE_MERCHANT;
+    if (!hadShopkeeperDecal && !hadMerchantCollidable) {
+      return;
+    }
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const nextDecals = hadShopkeeperDecal
+      ? replaceCellInGrid(decalsGrid, row, col, 0)
+      : decalsGrid;
+    const nextCollidables = hadMerchantCollidable
+      ? replaceCellInGrid(collidablesGrid, row, col, -1)
+      : collidablesGrid;
+    const mr = get().merchantRelocateFrom;
+    const nextMr =
+      mr?.row === row && mr.col === col ? null : mr;
+    set((s) => ({
+      decalsGrid: nextDecals,
+      collidablesGrid: nextCollidables,
+      messageDecals: reconcileMessageDecalsWithDecalsLayer(
+        nextDecals,
+        s.messageDecals,
+        mapSize,
+      ),
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        nextDecals,
+        nextCollidables,
+        s.merchantMeta,
+        mapSize,
+      ),
+      merchantRelocateFrom: nextMr,
+      merchantConfigModal:
+        s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col
+          ? null
+          : s.merchantConfigModal,
+      selectedDecalCell:
+        s.selectedDecalCell?.row === row && s.selectedDecalCell?.col === col
+          ? null
+          : s.selectedDecalCell,
+      merchantPlaceMode: false,
+    }));
+  },
+  setMerchantPlaceMode: (enabled) =>
+    set({
+      merchantPlaceMode: enabled,
+      ...(enabled
+        ? {
+            sidebarSection: "merchants",
+            activeLayer: "decals",
+            selectedTileId: DECAL_TILE_SHOPKEEPER,
+            merchantConfigModal: null,
+            merchantRelocateFrom: null,
+            spawnerSidebarMode: "select",
+            spawnerPlaceTileId: null,
+          }
+        : {}),
+    }),
   addItemSpawnerAtTile: (row, col) => {
     const targetId = ITEM_SPAWN_TILE_ID_MIN;
     const { spawnsGrid, dialogueNpcs, saveToHistory } = get();
@@ -998,6 +1304,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcs,
       messageDecals,
       spawnerMeta,
+      merchantMeta,
       quests,
       history,
     } = get();
@@ -1008,6 +1315,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       decals: decalsGrid.map((row) => [...row]),
       dialogueNpcs: dialogueNpcs.map((e) => ({ ...e })),
       messageDecals: messageDecals.map((e) => ({ ...e })),
+      merchantMeta: merchantMeta.map((e) => {
+        const snap: WorldMapMerchantEntry = { row: e.row, col: e.col };
+        const lab = e.label?.trim().slice(0, MERCHANT_META_LABEL_MAX);
+        if (lab) snap.label = lab;
+        if (e.shopItems !== undefined) {
+          snap.shopItems = e.shopItems.map((l) => ({ ...l }));
+        }
+        return snap;
+      }),
       spawnerMeta: spawnerMeta.map((e) => ({ ...e })),
       quests: quests.map((q) => ({
         ...q,
@@ -1033,6 +1349,26 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       previousState.messageDecals !== undefined
         ? previousState.messageDecals.map((e) => ({ ...e }))
         : reconcileMessageDecalsWithDecalsLayer(previousState.decals, [], mapSide);
+    const restoredMerchantMeta =
+      previousState.merchantMeta !== undefined
+        ? previousState.merchantMeta.map((e) => {
+            const snap: WorldMapMerchantEntry = { row: e.row, col: e.col };
+            const lab =
+              typeof e.label === "string"
+                ? e.label.trim().slice(0, MERCHANT_META_LABEL_MAX)
+                : "";
+            if (lab) snap.label = lab;
+            if (e.shopItems !== undefined) {
+              snap.shopItems = e.shopItems.map((l) => ({ ...l }));
+            }
+            return snap;
+          })
+        : reconcileMerchantMetaWithMerchantTiles(
+            previousState.decals,
+            previousState.collidables,
+            [],
+            mapSide,
+          );
     set({
       groundGrid: previousState.ground,
       collidablesGrid: previousState.collidables,
@@ -1040,6 +1376,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       decalsGrid: previousState.decals,
       dialogueNpcs: (previousState.dialogueNpcs ?? []).map((e) => ({ ...e })),
       messageDecals: restoredMessageDecals,
+      merchantMeta: restoredMerchantMeta,
       spawnerMeta: (previousState.spawnerMeta ?? []).map((e) => ({ ...e })),
       quests: (previousState.quests ?? []).map((q) => ({
         ...q,
@@ -1047,6 +1384,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         rewards: q.rewards.map((r) => ({ ...r })),
         startRewards: (q.startRewards ?? []).map((r) => ({ ...r })),
       })),
+      merchantRelocateFrom: null,
       history: history.slice(0, -1),
     });
   },
@@ -1059,7 +1397,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (activeLayer === "ground") {
       set({ groundGrid: createEmptyGroundLayer(n) });
     } else if (activeLayer === "collidables") {
-      set({ collidablesGrid: createEmptyCollidablesLayer(n) });
+      set((s) => {
+        const emptyC = createEmptyCollidablesLayer(n);
+        return {
+          collidablesGrid: emptyC,
+          merchantRelocateFrom: null,
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            s.decalsGrid,
+            emptyC,
+            s.merchantMeta,
+            n,
+          ),
+        };
+      });
     } else if (activeLayer === "spawns") {
       set({
         spawnsGrid: createEmptySpawnsLayer(n),
@@ -1069,13 +1419,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         spawnerConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
+        merchantRelocateFrom: null,
         questWaypointPickTarget: null,
       });
     } else {
-      set({
-        decalsGrid: createEmptyDecalsLayer(n),
-        messageDecals: [],
-        selectedDecalCell: null,
+      set((s) => {
+        const emptyD = createEmptyDecalsLayer(n);
+        return {
+          decalsGrid: emptyD,
+          messageDecals: [],
+          merchantRelocateFrom: null,
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            emptyD,
+            s.collidablesGrid,
+            s.merchantMeta,
+            n,
+          ),
+          selectedDecalCell: null,
+          merchantConfigModal: null,
+        };
       });
     }
   },
@@ -1097,7 +1459,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       isFillBucketMode: false,
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
+      merchantRelocateFrom: null,
       questWaypointPickTarget: null,
+      merchantPlaceMode: false,
     });
   },
 
@@ -1119,10 +1483,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcs,
       spawnerRelocateFrom,
       spawnerMeta,
+      merchantRelocateFrom,
+      merchantMeta,
       questWaypointPickTarget,
       sidebarSection,
       spawnerSidebarMode,
       spawnerPlaceTileId,
+      merchantPlaceMode,
     } = get();
 
     if (dialogueNpcRelocateFrom) {
@@ -1216,6 +1583,69 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedSpawnCell: { row, col },
         spawnerConfigModal: { row, col },
         npcConfigModal: null,
+      }));
+      return;
+    }
+
+    if (merchantRelocateFrom) {
+      if (paintStroke) return;
+      const { row: fr, col: fc } = merchantRelocateFrom;
+      if (row === fr && col === fc) {
+        set({ merchantRelocateFrom: null, merchantConfigModal: { row: fr, col: fc } });
+        return;
+      }
+      const srcDecal = decalsGrid[fr]?.[fc] ?? 0;
+      const srcColl = collidablesGrid[fr]?.[fc] ?? -1;
+      const hadDecal = srcDecal === DECAL_TILE_SHOPKEEPER;
+      const hadColl = srcColl === COLLIDABLE_TILE_MERCHANT;
+      if (!hadDecal && !hadColl) {
+        set({ merchantRelocateFrom: null });
+        return;
+      }
+      const destDecal = decalsGrid[row]?.[col] ?? 0;
+      const destColl = collidablesGrid[row]?.[col] ?? -1;
+      if (hadDecal && destDecal !== 0) return;
+      if (hadColl && destColl !== -1) return;
+      if (!hadDecal && destDecal === DECAL_TILE_SHOPKEEPER) return;
+      if (!hadColl && destColl === COLLIDABLE_TILE_MERCHANT) return;
+
+      saveToHistory();
+      const mapSize = getMapSideLength(groundGrid);
+      let nextDecals = decalsGrid;
+      let nextColl = collidablesGrid;
+      if (hadDecal) {
+        nextDecals = replaceCellInGrid(nextDecals, fr, fc, 0);
+        nextDecals = replaceCellInGrid(nextDecals, row, col, DECAL_TILE_SHOPKEEPER);
+      }
+      if (hadColl) {
+        nextColl = replaceCellInGrid(nextColl, fr, fc, -1);
+        nextColl = replaceCellInGrid(nextColl, row, col, COLLIDABLE_TILE_MERCHANT);
+      }
+
+      const metaAtSource = merchantMeta.find((e) => e.row === fr && e.col === fc);
+      const restMeta = merchantMeta.filter(
+        (e) => !((e.row === fr && e.col === fc) || (e.row === row && e.col === col)),
+      );
+      const nextMetaRaw = metaAtSource ? [...restMeta, { ...metaAtSource, row, col }] : restMeta;
+
+      set((s) => ({
+        decalsGrid: nextDecals,
+        collidablesGrid: nextColl,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          nextDecals,
+          s.messageDecals,
+          mapSize,
+        ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          nextDecals,
+          nextColl,
+          nextMetaRaw,
+          mapSize,
+        ),
+        merchantRelocateFrom: null,
+        merchantConfigModal: { row, col },
+        merchantPlaceMode: false,
+        selectedDecalCell: null,
       }));
       return;
     }
@@ -1316,6 +1746,51 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
 
+    if (!paintStroke && sidebarSection === "merchants" && merchantPlaceMode) {
+      const curDecal = decalsGrid[row]?.[col] ?? 0;
+      if (curDecal === DECAL_TILE_SHOPKEEPER) {
+        get().openMerchantMetaEditor(row, col);
+        set({ merchantPlaceMode: false });
+        return;
+      }
+      saveToHistory();
+      const mapSize = getMapSideLength(groundGrid);
+      const newDecals = replaceCellInGrid(decalsGrid, row, col, DECAL_TILE_SHOPKEEPER);
+      set((s) => ({
+        merchantPlaceMode: false,
+        activeLayer: "decals",
+        selectedTileId: DECAL_TILE_SHOPKEEPER,
+        decalsGrid: newDecals,
+        messageDecals: reconcileMessageDecalsWithDecalsLayer(
+          newDecals,
+          s.messageDecals,
+          mapSize,
+        ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          newDecals,
+          s.collidablesGrid,
+          s.merchantMeta,
+          mapSize,
+        ),
+        selectedDecalCell: null,
+      }));
+      return;
+    }
+
+    if (
+      !paintStroke &&
+      sidebarSection === "merchants" &&
+      !merchantPlaceMode &&
+      !merchantRelocateFrom
+    ) {
+      const decalId = decalsGrid[row]?.[col] ?? 0;
+      const collId = collidablesGrid[row]?.[col] ?? -1;
+      if (decalId === DECAL_TILE_SHOPKEEPER || collId === COLLIDABLE_TILE_MERCHANT) {
+        get().openMerchantMetaEditor(row, col);
+        return;
+      }
+    }
+
     if (get().sidebarSection !== "tiles") {
       return;
     }
@@ -1356,16 +1831,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
 
       if (activeLayer === "collidables") {
-        set({
-          collidablesGrid: fillRectInGrid(
-            collidablesGrid,
-            row,
-            col,
-            brushSize,
-            selectedTileId,
+        const newColl = fillRectInGrid(
+          collidablesGrid,
+          row,
+          col,
+          brushSize,
+          selectedTileId,
+          mapSize,
+        );
+        set((s) => ({
+          collidablesGrid: newColl,
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            s.decalsGrid,
+            newColl,
+            s.merchantMeta,
             mapSize,
           ),
-        });
+        }));
         return;
       }
 
@@ -1377,6 +1859,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           messageDecals: reconcileMessageDecalsWithDecalsLayer(
             newDecals,
             s.messageDecals,
+            mapSize,
+          ),
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            newDecals,
+            s.collidablesGrid,
+            s.merchantMeta,
             mapSize,
           ),
         }));
@@ -1467,6 +1955,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          newGrid,
+          s.collidablesGrid,
+          s.merchantMeta,
+          mapSize,
+        ),
+        merchantConfigModal:
+          s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col && newTileId === 0
+            ? null
+            : s.merchantConfigModal,
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
+          return null;
+        })(),
       }));
       return;
     }
@@ -1483,7 +1986,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           : selectedTileId;
 
       const newGrid = replaceCellInGrid(collidablesGrid, row, col, newTileId);
-      set({ collidablesGrid: newGrid });
+      set((s) => ({
+        collidablesGrid: newGrid,
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          s.decalsGrid,
+          newGrid,
+          s.merchantMeta,
+          newGrid.length,
+        ),
+        merchantConfigModal:
+          s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col && newTileId === -1
+            ? null
+            : s.merchantConfigModal,
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
+          return null;
+        })(),
+      }));
     }
   },
 
@@ -1503,7 +2023,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
     if (activeLayer === "collidables") {
-      set({ collidablesGrid: replaceCellInGrid(collidablesGrid, row, col, -1) });
+      const newGrid = replaceCellInGrid(collidablesGrid, row, col, -1);
+      set((s) => ({
+        collidablesGrid: newGrid,
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          s.decalsGrid,
+          newGrid,
+          s.merchantMeta,
+          newGrid.length,
+        ),
+        merchantConfigModal:
+          s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col
+            ? null
+            : s.merchantConfigModal,
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
+          return null;
+        })(),
+      }));
       return;
     }
     if (activeLayer === "spawns") {
@@ -1538,6 +2076,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          newGrid,
+          s.collidablesGrid,
+          s.merchantMeta,
+          mapSize,
+        ),
+        merchantConfigModal:
+          s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col
+            ? null
+            : s.merchantConfigModal,
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
+          return null;
+        })(),
       }));
     }
   },
@@ -1571,9 +2124,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
     if (activeLayer === "collidables") {
-      set({
-        collidablesGrid: fillRectInGrid(collidablesGrid, row, col, brushSize, -1, mapSize),
-      });
+      const newColl = fillRectInGrid(collidablesGrid, row, col, brushSize, -1, mapSize);
+      set((s) => ({
+        collidablesGrid: newColl,
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          s.decalsGrid,
+          newColl,
+          s.merchantMeta,
+          mapSize,
+        ),
+        merchantConfigModal: (() => {
+          const m = s.merchantConfigModal;
+          if (!m) return null;
+          if (m.row >= r0 && m.row < r1 && m.col >= c0 && m.col < c1) return null;
+          return m;
+        })(),
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr) return s.merchantRelocateFrom;
+          if (mr.row >= r0 && mr.row < r1 && mr.col >= c0 && mr.col < c1) return null;
+          return mr;
+        })(),
+      }));
       return;
     }
     if (activeLayer === "spawns") {
@@ -1630,6 +2202,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          newDecals,
+          s.collidablesGrid,
+          s.merchantMeta,
+          mapSize,
+        ),
+        merchantConfigModal: (() => {
+          const m = s.merchantConfigModal;
+          if (!m) return null;
+          if (m.row >= r0 && m.row < r1 && m.col >= c0 && m.col < c1) return null;
+          return m;
+        })(),
+        merchantRelocateFrom: (() => {
+          const mr = s.merchantRelocateFrom;
+          if (!mr) return s.merchantRelocateFrom;
+          if (mr.row >= r0 && mr.row < r1 && mr.col >= c0 && mr.col < c1) return null;
+          return mr;
+        })(),
       }));
     }
   },
@@ -1673,7 +2263,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   floodFillCollidables: (startRow, startCol, newTileId) => {
-    const { collidablesGrid } = get();
+    const { collidablesGrid, decalsGrid, merchantMeta } = get();
     const mapSize = collidablesGrid.length;
     const originalTileId = collidablesGrid[startRow]?.[startCol];
 
@@ -1707,7 +2297,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       queue.push({ row: pos.row, col: pos.col + 1 });
     }
 
-    set({ collidablesGrid: newGrid });
+    set({
+      collidablesGrid: newGrid,
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        decalsGrid,
+        newGrid,
+        merchantMeta,
+        mapSize,
+      ),
+    });
   },
 
   pasteClipboard: (startRow, startCol) => {
@@ -1742,6 +2340,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newDecalsGrid,
           s.messageDecals,
+          mapSize,
+        ),
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          newDecalsGrid,
+          s.collidablesGrid,
+          s.merchantMeta,
           mapSize,
         ),
       }));
@@ -1821,7 +2425,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         }
       }
 
-      set({ collidablesGrid: newCollidablesGrid });
+      set((s) => ({
+        collidablesGrid: newCollidablesGrid,
+        merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+          s.decalsGrid,
+          newCollidablesGrid,
+          s.merchantMeta,
+          mapSize,
+        ),
+      }));
     }
   },
 }));

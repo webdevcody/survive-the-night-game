@@ -2,12 +2,16 @@ import { GameState, getEntityById } from "@/state";
 import { PlayerClient } from "@/entities/player";
 import { CommandAutocomplete } from "./command-autocomplete";
 
-const CHAT_FONT_SIZE = 18;
+const CHAT_FONT_SIZE = 14;
 const CHAT_FONT_FAMILY = "Arial";
 const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
-const CHAT_INPUT_HEIGHT = 50;
+const CHAT_INPUT_HEIGHT = 44;
+/** Max panel width; messages wrap to this width minus padding. */
+const CHAT_PANEL_MAX_WIDTH = 200;
+const CHAT_LEFT_MARGIN = 12;
 const CHAT_BOTTOM_MARGIN = 210; // Distance from bottom of screen to chat input (above inventory bar)
+const CHAT_TOGGLE_BTN = { w: 88, h: 32, left: 12, bottom: 12 } as const;
 
 interface ChatMessage {
   playerId: number;
@@ -17,6 +21,8 @@ interface ChatMessage {
 
 export class ChatWidget {
   private showChatInput: boolean = false;
+  /** Message list + input (when open); toggle button is always visible. */
+  private chatPanelOpen: boolean = true;
   private chatInput: string = "";
   private chatMessages: ChatMessage[] = [];
   private messageHistory: string[] = [];
@@ -25,15 +31,12 @@ export class ChatWidget {
   private readonly CHAT_MESSAGE_TIMEOUT = 10000;
   private readonly MAX_MESSAGE_LENGTH = 60;
   private readonly MAX_HISTORY_LENGTH = 50;
-  private readonly CHAT_WIDTH = 840;
-  private readonly CHARS_PER_LINE = 100;
 
   constructor() {
     this.autocomplete = new CommandAutocomplete();
   }
 
   public update(): void {
-    // Clean up old messages
     const now = Date.now();
     this.chatMessages = this.chatMessages.filter(
       (message) => now - message.timestamp < this.CHAT_MESSAGE_TIMEOUT
@@ -43,18 +46,38 @@ export class ChatWidget {
   public toggleChatInput(): void {
     this.showChatInput = !this.showChatInput;
     if (!this.showChatInput) {
-      this.chatInput = ""; // Clear input when closing
-      this.autocomplete.reset(); // Reset autocomplete when closing
+      this.chatInput = "";
+      this.autocomplete.reset();
     } else {
-      // Reset history navigation when opening chat
+      this.chatPanelOpen = true;
       this.historyIndex = -1;
     }
+  }
+
+  public toggleChatPanel(): void {
+    this.chatPanelOpen = !this.chatPanelOpen;
+    if (!this.chatPanelOpen) {
+      this.showChatInput = false;
+      this.chatInput = "";
+      this.autocomplete.reset();
+    }
+  }
+
+  /**
+   * Bottom-left toggle: returns true if the click was consumed.
+   */
+  public handleToggleButtonClick(x: number, y: number, canvasHeight: number): boolean {
+    const b = this.getToggleButtonRect(canvasHeight);
+    if (x < b.x || x > b.x + b.w || y < b.y || y > b.y + b.h) {
+      return false;
+    }
+    this.toggleChatPanel();
+    return true;
   }
 
   public updateChatInput(key: string, shiftKey: boolean = false): void {
     if (!this.showChatInput) return;
 
-    // Handle Tab for autocomplete
     if (key === "Tab") {
       const completed = shiftKey
         ? this.autocomplete.handleShiftTab(this.chatInput)
@@ -65,7 +88,6 @@ export class ChatWidget {
       return;
     }
 
-    // Handle Escape to close autocomplete suggestions
     if (key === "Escape" && this.autocomplete.isActive()) {
       this.autocomplete.reset();
       return;
@@ -75,7 +97,6 @@ export class ChatWidget {
       this.chatInput = this.chatInput.slice(0, -1);
       this.autocomplete.handleInput(this.chatInput);
     } else if (key === "ArrowUp") {
-      // If autocomplete is active, navigate suggestions; otherwise navigate history
       if (this.autocomplete.isActive()) {
         const completed = this.autocomplete.handleArrowUp();
         if (completed !== null) {
@@ -85,7 +106,6 @@ export class ChatWidget {
         this.navigateHistory(1);
       }
     } else if (key === "ArrowDown") {
-      // If autocomplete is active, navigate suggestions; otherwise navigate history
       if (this.autocomplete.isActive()) {
         const completed = this.autocomplete.handleArrowDown();
         if (completed !== null) {
@@ -97,7 +117,6 @@ export class ChatWidget {
     } else if (key.length === 1 && this.chatInput.length < this.MAX_MESSAGE_LENGTH) {
       this.chatInput += key;
       this.autocomplete.handleInput(this.chatInput);
-      // Reset history navigation when user types
       this.historyIndex = -1;
     }
   }
@@ -107,15 +126,12 @@ export class ChatWidget {
 
     const newIndex = this.historyIndex + direction;
 
-    // Clamp the index between -1 (current input) and history length - 1 (oldest message)
     if (newIndex >= -1 && newIndex < this.messageHistory.length) {
       this.historyIndex = newIndex;
 
       if (this.historyIndex === -1) {
-        // Reset to empty input
         this.chatInput = "";
       } else {
-        // Load message from history (most recent first)
         this.chatInput = this.messageHistory[this.historyIndex];
       }
     }
@@ -132,20 +148,16 @@ export class ChatWidget {
   public saveChatMessage(message: string): void {
     if (message.trim() === "") return;
 
-    // Add to history (most recent first)
     this.messageHistory.unshift(message);
 
-    // Limit history size
     if (this.messageHistory.length > this.MAX_HISTORY_LENGTH) {
       this.messageHistory = this.messageHistory.slice(0, this.MAX_HISTORY_LENGTH);
     }
 
-    // Reset history index
     this.historyIndex = -1;
   }
 
   public addChatMessage(playerId: number, message: string): void {
-    // Only truncate user messages, not system messages (system messages use playerId 0)
     const isSystem = playerId === 0;
     const truncatedMessage = isSystem ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
 
@@ -157,160 +169,179 @@ export class ChatWidget {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    this.renderChatToggleButton(ctx);
+    if (!this.chatPanelOpen) {
+      return;
+    }
     this.renderChatMessages(ctx, gameState);
     this.renderChatInput(ctx);
     this.renderAutocompleteSuggestions(ctx);
   }
 
-  private wrapText(text: string): string[] {
-    const allLines: string[] = [];
-
-    // First, split by explicit newline characters
-    const textLines = text.split("\n");
-
-    // Then apply word wrapping to each line
-    for (const textLine of textLines) {
-      const wrappedLines = this.wrapSingleLine(textLine);
-      allLines.push(...wrappedLines);
-    }
-
-    return allLines;
+  private getPanelX(): number {
+    return CHAT_LEFT_MARGIN;
   }
 
-  private wrapSingleLine(text: string): string[] {
-    const lines: string[] = [];
-    let currentLine = "";
-    let currentLineChars = 0;
-    const words = text.split(" ");
+  private getToggleButtonRect(canvasHeight: number): { x: number; y: number; w: number; h: number } {
+    return {
+      x: CHAT_TOGGLE_BTN.left,
+      y: canvasHeight - CHAT_TOGGLE_BTN.bottom - CHAT_TOGGLE_BTN.h,
+      w: CHAT_TOGGLE_BTN.w,
+      h: CHAT_TOGGLE_BTN.h,
+    };
+  }
 
-    for (const word of words) {
-      if (currentLineChars + word.length + 1 > this.CHARS_PER_LINE) {
-        if (currentLine) {
-          lines.push(currentLine.trim());
-          currentLine = word + " ";
-          currentLineChars = word.length + 1;
-        } else {
-          // If a single word is longer than CHARS_PER_LINE, split it
-          lines.push(word.slice(0, this.CHARS_PER_LINE));
-          currentLine = word.slice(this.CHARS_PER_LINE) + " ";
-          currentLineChars = currentLine.length;
-        }
-      } else {
-        currentLine += word + " ";
-        currentLineChars += word.length + 1;
+  private renderChatToggleButton(ctx: CanvasRenderingContext2D): void {
+    const { x, y, w, h } = this.getToggleButtonRect(ctx.canvas.height);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+    this.fillRoundRect(ctx, x, y, w, h, 6);
+    ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
+    ctx.lineWidth = 1;
+    this.strokeRoundRect(ctx, x, y, w, h, 6);
+    ctx.font = `12px ${CHAT_FONT_FAMILY}`;
+    ctx.fillStyle = CHAT_TEXT_COLOR;
+    const label = this.chatPanelOpen ? "Hide chat" : "Chat";
+    ctx.fillText(label, x + 10, y + h / 2 + 4);
+  }
+
+  /** Word-wrap using the active canvas font so lines fit `maxWidth`. */
+  private wrapTextToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const result: string[] = [];
+    for (const para of text.split("\n")) {
+      if (para === "") {
+        result.push("");
+        continue;
       }
+      const words = para.split(/\s+/);
+      let line = "";
+      for (const word of words) {
+        if (!word) continue;
+        const testLine = line ? `${line} ${word}` : word;
+        if (ctx.measureText(testLine).width <= maxWidth) {
+          line = testLine;
+          continue;
+        }
+        if (line) {
+          result.push(line);
+          line = "";
+        }
+        if (ctx.measureText(word).width <= maxWidth) {
+          line = word;
+        } else {
+          let part = "";
+          for (const ch of word) {
+            const next = part + ch;
+            if (ctx.measureText(next).width <= maxWidth) {
+              part = next;
+            } else {
+              if (part) result.push(part);
+              part = ch;
+            }
+          }
+          line = part;
+        }
+      }
+      if (line) result.push(line);
     }
-
-    if (currentLine) {
-      lines.push(currentLine.trim());
-    }
-
-    // If no lines were created (empty string), add an empty line
-    if (lines.length === 0) {
-      lines.push("");
-    }
-
-    return lines;
+    return result.length > 0 ? result : [""];
   }
 
   private renderChatMessages(ctx: CanvasRenderingContext2D, gameState: GameState): void {
     const messages = [...this.chatMessages];
-    const lineHeight = 32;
+    const lineHeight = 20;
     const maxMessages = 8;
-    const padding = 20;
-    const width = this.CHAT_WIDTH;
+    const padding = 10;
+    const width = CHAT_PANEL_MAX_WIDTH;
+    const panelX = this.getPanelX();
+    const textMaxWidth = width - padding * 2;
 
-    // Process messages and calculate total height
     const processedMessages = messages.slice(-maxMessages).map((chat) => {
-      // For system messages (playerId 0), don't prepend username
       let text: string;
       const isSystem = chat.playerId === 0;
       if (isSystem) {
         text = chat.message;
       } else {
-        // Get the player entity by ID to get their display name
         const entity = getEntityById(gameState, chat.playerId);
         const userName =
           entity instanceof PlayerClient ? entity.getDisplayName() : "Unknown";
         text = `${userName}: ${chat.message}`;
       }
-      const lines = this.wrapText(text);
+      ctx.font = isSystem
+        ? `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`
+        : `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+      const lines = this.wrapTextToWidth(ctx, text, textMaxWidth);
       return { ...chat, lines, lineCount: lines.length, isSystem };
     });
 
-    // Calculate total height based on actual content
     const totalHeight =
       processedMessages.reduce((acc, msg) => acc + msg.lineCount * lineHeight, 0) + padding * 2;
 
-    // Position the chat box above the inventory bar
-    const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN - totalHeight;
-
-    // Draw background
-    if (messages.length > 0) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      this.roundRect(ctx, (ctx.canvas.width - width) / 2, y - 16, width, totalHeight, 8);
-      ctx.fill();
+    const toggleReserve =
+      CHAT_TOGGLE_BTN.bottom + CHAT_TOGGLE_BTN.h + 10;
+    const maxBottom = ctx.canvas.height - toggleReserve;
+    let blockTop = Math.max(
+      48,
+      Math.round((ctx.canvas.height - totalHeight) / 2),
+    );
+    if (blockTop + totalHeight > maxBottom) {
+      blockTop = Math.max(48, maxBottom - totalHeight);
     }
 
-    // Draw messages starting from the bottom
+    if (messages.length > 0) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      this.fillRoundRect(ctx, panelX, blockTop, width, totalHeight, 8);
+    }
+
     ctx.fillStyle = CHAT_TEXT_COLOR;
+    let currentY = blockTop + padding;
 
-    // Start at the bottom of the widget (minus padding)
-    let currentY = ctx.canvas.height - CHAT_BOTTOM_MARGIN - padding;
-
-    // Render messages in reverse order, moving upwards
-    for (let i = processedMessages.length - 1; i >= 0; i--) {
-      const chat = processedMessages[i];
-
-      // Use monospace font for system messages, regular font for user messages
+    for (const chat of processedMessages) {
       ctx.font = chat.isSystem
         ? `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`
         : `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
 
-      // Move up by the height of all lines in this message
-      currentY -= chat.lineCount * lineHeight;
-
-      // Render each line of the message
-      chat.lines.forEach((line) => {
-        ctx.fillText(line, (ctx.canvas.width - width) / 2 + padding, currentY);
+      for (const line of chat.lines) {
+        ctx.fillText(line, panelX + padding, currentY + CHAT_FONT_SIZE);
         currentY += lineHeight;
-      });
-      // Move back up to prepare for the next message
-      currentY -= chat.lineCount * lineHeight;
+      }
     }
   }
 
   private renderChatInput(ctx: CanvasRenderingContext2D): void {
     if (!this.showChatInput) return;
 
-    const width = this.CHAT_WIDTH;
-    const x = (ctx.canvas.width - width) / 2;
+    const width = CHAT_PANEL_MAX_WIDTH;
+    const x = this.getPanelX();
     const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN;
 
-    // Draw input background
     ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    this.roundRect(ctx, x, y, width, CHAT_INPUT_HEIGHT, 8);
-    ctx.fill();
+    this.fillRoundRect(ctx, x, y, width, CHAT_INPUT_HEIGHT, 8);
 
-    // Draw input text
     ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
-    ctx.fillStyle = CHAT_TEXT_COLOR;
-    const text = this.chatInput + "▌";
-    const textY = y + CHAT_INPUT_HEIGHT / 2 + 6;
-    ctx.fillText(text, x + 10, textY);
+    const textY = y + CHAT_INPUT_HEIGHT / 2 + 5;
+    const textX = x + 8;
+    const textClipW = width - 16;
 
-    // Draw placeholder text if empty
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(textX, y + 4, textClipW, CHAT_INPUT_HEIGHT - 8);
+    ctx.clip();
+
     if (!this.chatInput) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-      ctx.fillText("Press Enter to send, Esc to cancel", x + 10, textY);
+      ctx.fillText("Enter send · Esc cancel", textX, textY);
+    } else {
+      ctx.fillStyle = CHAT_TEXT_COLOR;
+      ctx.fillText(this.chatInput + "\u258C", textX, textY);
     }
+    ctx.restore();
 
-    // Draw character count if typing
     if (this.chatInput) {
+      ctx.font = `11px ${CHAT_FONT_FAMILY}`;
       const charCount = `${this.chatInput.length}/${this.MAX_MESSAGE_LENGTH}`;
       const charCountWidth = ctx.measureText(charCount).width;
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
-      ctx.fillText(charCount, x + width - charCountWidth - 10, textY);
+      ctx.fillText(charCount, x + width - charCountWidth - 8, y + CHAT_INPUT_HEIGHT - 6);
     }
   }
 
@@ -322,54 +353,44 @@ export class ChatWidget {
 
     if (suggestions.length === 0) return;
 
-    const width = this.CHAT_WIDTH;
-    const x = (ctx.canvas.width - width) / 2;
+    const width = CHAT_PANEL_MAX_WIDTH;
+    const x = this.getPanelX();
 
-    const lineHeight = 28;
+    const lineHeight = 24;
     const padding = 8;
-    const hintHeight = 24; // Space for the hint text at the bottom
+    const hintHeight = 22;
     const height = suggestions.length * lineHeight + padding * 2 + hintHeight;
 
-    // Position above the chat input instead of below
     const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN - height - 4;
 
-    // Draw background
     ctx.fillStyle = "rgba(30, 30, 30, 0.95)";
-    this.roundRect(ctx, x, y, width, height, 8);
-    ctx.fill();
+    this.fillRoundRect(ctx, x, y, width, height, 8);
 
-    // Draw border
     ctx.strokeStyle = "rgba(100, 100, 100, 0.8)";
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    this.roundRect(ctx, x, y, width, height, 8);
-    ctx.stroke();
+    this.strokeRoundRect(ctx, x, y, width, height, 8);
 
-    // Draw suggestions
     ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`;
 
     suggestions.forEach((suggestion, index) => {
       const itemY = y + padding + index * lineHeight;
 
-      // Highlight selected item
       if (index === selectedIndex) {
         ctx.fillStyle = "rgba(60, 120, 200, 0.5)";
         ctx.fillRect(x + 4, itemY, width - 8, lineHeight);
       }
 
-      // Draw suggestion text
       ctx.fillStyle = index === selectedIndex ? "white" : "rgba(200, 200, 200, 0.9)";
-      ctx.fillText(suggestion, x + padding, itemY + lineHeight / 2 + 6);
+      const lines = this.wrapTextToWidth(ctx, suggestion, width - padding * 2 - 4);
+      ctx.fillText(lines[0] ?? "", x + padding, itemY + lineHeight / 2 + 5);
     });
 
-    // Draw hint at bottom with more spacing
     ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
-    ctx.font = `12px ${CHAT_FONT_FAMILY}`;
-    ctx.fillText("↑↓ or Tab to cycle, Escape to close", x + padding, y + height - 8);
+    ctx.font = `11px ${CHAT_FONT_FAMILY}`;
+    ctx.fillText("↑↓ Tab · Esc close", x + padding, y + height - 6);
   }
 
-  // Helper method for drawing rounded rectangles
-  private roundRect(
+  private addRoundRectPath(
     ctx: CanvasRenderingContext2D,
     x: number,
     y: number,
@@ -406,6 +427,33 @@ export class ChatWidget {
       ctx.lineTo(x, y);
     }
     ctx.closePath();
+  }
+
+  private fillRoundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    topRounded: boolean = true,
+    bottomRounded: boolean = true
+  ): void {
+    this.addRoundRectPath(ctx, x, y, width, height, radius, topRounded, bottomRounded);
     ctx.fill();
+  }
+
+  private strokeRoundRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number,
+    topRounded: boolean = true,
+    bottomRounded: boolean = true
+  ): void {
+    this.addRoundRectPath(ctx, x, y, width, height, radius, topRounded, bottomRounded);
+    ctx.stroke();
   }
 }

@@ -14,9 +14,11 @@ describe("recipes", () => {
     expect(workbenchRecipes).toContain("torch");
     expect(workbenchRecipes).toContain("cloth_hood");
     expect(workbenchRecipes).toContain("scrap_metal_bundle");
+    expect(workbenchRecipes).toContain("skateboard");
 
     const campfireRecipes = getRecipesForStation("campfire").map((recipe) => recipe.id);
     expect(campfireRecipes).toContain("trail_mix");
+    expect(campfireRecipes).toContain("clean_water");
     expect(campfireRecipes).toContain("campfire_feast");
   });
 

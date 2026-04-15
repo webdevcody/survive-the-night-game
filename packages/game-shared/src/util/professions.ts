@@ -133,6 +133,7 @@ export const PROFESSION_DEFINITIONS: Record<ProfessionId, ProfessionDefinition> 
     palette: ["canned_food", "wild_herbs", "clean_water"],
     unlocks: [
       { level: 1, recipeId: "trail_mix", label: "Trail Mix" },
+      { level: 1, recipeId: "clean_water", label: "Boil Water" },
       { level: 5, recipeId: "stew_can", label: "Stew Can" },
       { level: 9, recipeId: "seasoned_rations", label: "Seasoned Rations" },
       { level: 13, recipeId: "protein_plate", label: "Protein Plate" },

@@ -27,6 +27,16 @@ function isTypingTarget(el: EventTarget | null): boolean {
   return el.isContentEditable;
 }
 
+/** Skip map pan/zoom/shortcuts while focus/target is in a modal, form control, or portaled dropdown. */
+function shouldSuppressMapInteraction(el: EventTarget | null): boolean {
+  if (isTypingTarget(el)) return true;
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.closest('[role="dialog"]')) return true;
+  if (el.closest('[role="listbox"]')) return true;
+  if (el.closest("[data-radix-popper-content-wrapper]")) return true;
+  return false;
+}
+
 /** Full-viewport map canvas only — UI lives in overlay panels. */
 export function TileMapEditor() {
   const activeLayer = useEditorStore((state) => state.activeLayer);
@@ -55,6 +65,10 @@ export function TileMapEditor() {
     spawnerSidebarMode === "place" &&
     spawnerPlaceTileId != null &&
     spawnerPlaceTileId > 0;
+  const merchantPlaceMode = useEditorStore((state) => state.merchantPlaceMode);
+  const merchantRelocateFrom = useEditorStore((state) => state.merchantRelocateFrom);
+  const merchantPlaceActive = sidebarSection === "merchants" && merchantPlaceMode;
+  const merchantRelocateActive = Boolean(merchantRelocateFrom);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,7 +130,7 @@ export function TileMapEditor() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target)) return;
+      if (shouldSuppressMapInteraction(e.target)) return;
       if (e.key === "Escape") {
         const st = useEditorStore.getState();
         if (st.dialogueNpcRelocateFrom) {
@@ -141,6 +155,16 @@ export function TileMapEditor() {
         ) {
           e.preventDefault();
           st.setSpawnerPlaceTileId(null);
+          return;
+        }
+        if (st.merchantPlaceMode) {
+          e.preventDefault();
+          st.setMerchantPlaceMode(false);
+          return;
+        }
+        if (st.merchantRelocateFrom) {
+          e.preventDefault();
+          st.cancelMerchantRelocate();
           return;
         }
       }
@@ -242,7 +266,7 @@ export function TileMapEditor() {
     if (!canvas) return;
 
     const onWheel = (e: WheelEvent) => {
-      if (isTypingTarget(e.target)) return;
+      if (shouldSuppressMapInteraction(e.target)) return;
 
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
@@ -364,6 +388,7 @@ export function TileMapEditor() {
 
   const handleDragStrokeAt = (row: number, col: number) => {
     if (useEditorStore.getState().questWaypointPickTarget) return;
+    if (useEditorStore.getState().merchantRelocateFrom) return;
     if (!useEditorStore.getState().isDragging) return;
     if (!dragPaintedInitialRef.current && dragStartCellRef.current) {
       const { row: sr, col: sc } = dragStartCellRef.current;
@@ -648,6 +673,19 @@ export function TileMapEditor() {
         }
       }
 
+      const relocateMerchant = s.merchantRelocateFrom;
+      if (relocateMerchant) {
+        const lr = relocateMerchant.row - s.cameraY;
+        const lc = relocateMerchant.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(196, 181, 253, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
       const hoverPickCell = hoverCellRef.current;
       if (s.questWaypointPickTarget && hoverPickCell) {
         const lr = hoverPickCell.row - s.cameraY;
@@ -673,6 +711,18 @@ export function TileMapEditor() {
           const rx = lc * tilePx;
           const ry = lr * tilePx;
           ctx.strokeStyle = "rgba(167, 139, 250, 0.95)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
+        }
+      }
+
+      if (s.merchantRelocateFrom && hoverPickCell) {
+        const lr = hoverPickCell.row - s.cameraY;
+        const lc = hoverPickCell.col - s.cameraX;
+        if (lr >= 0 && lc >= 0 && lr < vrc && lc < vcc) {
+          const rx = lc * tilePx;
+          const ry = lr * tilePx;
+          ctx.strokeStyle = "rgba(196, 181, 253, 0.85)";
           ctx.lineWidth = 3;
           ctx.strokeRect(rx + 1.5, ry + 1.5, tilePx - 3, tilePx - 3);
         }
@@ -867,7 +917,11 @@ export function TileMapEditor() {
                 ? "cursor-grabbing"
                 : shiftHeld
                   ? "cursor-grab"
-                  : canPaintTiles || questWaypointPickActive || spawnerPlaceActive
+                  : canPaintTiles ||
+                      questWaypointPickActive ||
+                      spawnerPlaceActive ||
+                      merchantPlaceActive ||
+                      merchantRelocateActive
                     ? "cursor-crosshair"
                     : "cursor-default"
             }`}
@@ -946,6 +1000,30 @@ export function TileMapEditor() {
             }}
           >
             Add spawner
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left hover:bg-gray-800"
+            onClick={() => {
+              useEditorStore.getState().addMerchantAtTile(tileContextMenu.row, tileContextMenu.col);
+              setTileContextMenu(null);
+            }}
+          >
+            Add merchant
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-1.5 text-left hover:bg-gray-800"
+            onClick={() => {
+              useEditorStore
+                .getState()
+                .removeMerchantAtTile(tileContextMenu.row, tileContextMenu.col);
+              setTileContextMenu(null);
+            }}
+          >
+            Remove merchant
           </button>
         </div>
       ) : null}

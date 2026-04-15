@@ -53,12 +53,14 @@ import {
 } from "../../../game-shared/src/map/spawn-palette";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "../../../game-shared/src/map/world-map-types";
 import {
   getMessageDecalLines,
   normalizeDialogueNpcs,
+  reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
@@ -77,6 +79,10 @@ import {
   DECAL_TILE_AUCTION_HOUSE,
 } from "../../../game-shared/src/map/decal-palette";
 import { COLLIDABLE_TILE_MERCHANT } from "../../../game-shared/src/map/collidable-tile-ids";
+import {
+  MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DX,
+  MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DY,
+} from "@shared/map/merchant-footprint";
 import {
   URBAN_SCAVENGE_DROP_TABLE,
   WILDERNESS_SCAVENGE_DROP_TABLE,
@@ -148,6 +154,8 @@ export class MapManager implements IMapManager {
   private authoredMessageDecals: WorldMapMessageDecalEntry[] = [];
   /** Spawner labels + optional respawn overrides (reconciled to non-dialogue spawns layer cells). */
   private authoredSpawnerMeta: WorldMapSpawnerMetaEntry[] = [];
+  /** Merchant stock overrides aligned to shopkeeper decals + merchant collidables. */
+  private authoredMerchantMeta: WorldMapMerchantEntry[] = [];
   private authoredQuests: WorldMapQuestDefinition[] = [];
   private gameManagers?: IGameManagers;
   private entityManager?: IEntityManager;
@@ -476,6 +484,7 @@ export class MapManager implements IMapManager {
     this.authoredDialogueNpcs = [];
     this.authoredMessageDecals = [];
     this.authoredSpawnerMeta = [];
+    this.authoredMerchantMeta = [];
     this.authoredQuests = [];
   }
 
@@ -553,6 +562,12 @@ export class MapManager implements IMapManager {
     );
     this.authoredQuests = normalizeQuests(data.quests, n);
     this.authoredSpawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(this.spawnLayer, data.spawnerMeta);
+    this.authoredMerchantMeta = reconcileMerchantMetaWithMerchantTiles(
+      this.decalsLayer,
+      this.collidablesLayer,
+      data.merchantMeta,
+      n,
+    );
     this.authoredWorldMapApplied = true;
     return true;
   }
@@ -987,7 +1002,16 @@ export class MapManager implements IMapManager {
         const key = `${x},${y}`;
         merchantTileKeys.add(key);
         const merchant = new Merchant(this.getGameManagers());
-        merchant.setPosition(poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE));
+        merchant.setPosition(
+          poolManager.vector2.claim(
+            (x + MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DX) * TILE_SIZE,
+            (y + MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DY) * TILE_SIZE,
+          ),
+        );
+        const stock = this.authoredMerchantMeta.find((m) => m.row === y && m.col === x);
+        if (stock?.shopItems !== undefined) {
+          merchant.applyAuthoredShopItems(stock.shopItems);
+        }
         this.getEntityManager().addEntity(merchant);
       }
     }
@@ -1004,7 +1028,16 @@ export class MapManager implements IMapManager {
         }
         merchantTileKeys.add(key);
         const merchant = new Merchant(this.getGameManagers());
-        merchant.setPosition(poolManager.vector2.claim(x * TILE_SIZE, y * TILE_SIZE));
+        merchant.setPosition(
+          poolManager.vector2.claim(
+            (x + MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DX) * TILE_SIZE,
+            (y + MERCHANT_FOOTPRINT_TOP_LEFT_TILE_DY) * TILE_SIZE,
+          ),
+        );
+        const stock = this.authoredMerchantMeta.find((m) => m.row === y && m.col === x);
+        if (stock?.shopItems !== undefined) {
+          merchant.applyAuthoredShopItems(stock.shopItems);
+        }
         this.getEntityManager().addEntity(merchant);
       }
     }

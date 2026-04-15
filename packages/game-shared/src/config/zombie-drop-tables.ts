@@ -36,6 +36,7 @@ export const LEGACY_RANDOM_DROP_TABLE: ZombieDropTableEntry[] = [
   { itemType: "canned_food", weight: 14, countMin: 1, countMax: 2 },
   { itemType: "wild_herbs", weight: 12, countMin: 1, countMax: 2 },
   { itemType: "clean_water", weight: 12, countMin: 1, countMax: 2 },
+  { itemType: "dirty_water", weight: 14, countMin: 1, countMax: 2 },
   { itemType: "bandage", weight: 15 },
   { itemType: "pain_pills", weight: 10 },
   { itemType: "coin", weight: 10 },
@@ -69,6 +70,7 @@ export const LEGACY_RANDOM_DROP_TABLE: ZombieDropTableEntry[] = [
 export const NORMAL_ZOMBIE_DROP_TABLE: ZombieDropTableEntry[] = [
   { itemType: "cloth", weight: 25 },
   { itemType: "coin", weight: 25 },
+  { itemType: "dirty_water", weight: 12 },
   { itemType: "pistol_ammo", weight: 8 },
   { itemType: "pistol", weight: 2 },
 ];
@@ -96,6 +98,7 @@ export const URBAN_SCAVENGE_DROP_TABLE: ZombieDropTableEntry[] = scaleZombieDrop
   canned_food: 0.8,
   wild_herbs: 0.6,
   clean_water: 0.85,
+  dirty_water: 1.2,
 });
 
 export const WILDERNESS_SCAVENGE_DROP_TABLE: ZombieDropTableEntry[] = scaleZombieDropWeights(L, {
@@ -103,6 +106,7 @@ export const WILDERNESS_SCAVENGE_DROP_TABLE: ZombieDropTableEntry[] = scaleZombi
   canned_food: 1.45,
   wild_herbs: 1.55,
   clean_water: 1.45,
+  dirty_water: 1.35,
   cloth: 1.15,
   wood: 1.15,
   scrap_metal: 0.8,

@@ -3,6 +3,7 @@ import { API_ENDPOINTS } from "../-config/api";
 import type {
   WorldMapDialogueNpcEditorMetadata,
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
@@ -18,6 +19,7 @@ interface WorldMapDataResponse {
   messageDecals?: WorldMapMessageDecalEntry[];
   quests?: WorldMapQuestDefinition[];
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
+  merchantMeta?: WorldMapMerchantEntry[];
   dialogueNpcEditorMetadata?: WorldMapDialogueNpcEditorMetadata[];
 }
 
@@ -115,6 +117,7 @@ export function useSaveWorldMap() {
       messageDecals,
       quests,
       spawnerMeta,
+      merchantMeta,
     }: {
       ground: number[][];
       collidables: number[][];
@@ -124,6 +127,7 @@ export function useSaveWorldMap() {
       messageDecals: WorldMapMessageDecalEntry[];
       quests: WorldMapQuestDefinition[];
       spawnerMeta: WorldMapSpawnerMetaEntry[];
+      merchantMeta: WorldMapMerchantEntry[];
     }): Promise<SaveWorldMapResponse> => {
       const response = await fetch(API_ENDPOINTS.worldMap(), {
         method: "POST",
@@ -139,6 +143,7 @@ export function useSaveWorldMap() {
           messageDecals,
           quests,
           spawnerMeta,
+          merchantMeta,
         }),
       });
 

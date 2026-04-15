@@ -29,7 +29,14 @@ import {
 } from "../../../game-shared/src/util/auction-types";
 import type { AuctionItemCategory } from "../../../game-shared/src/util/auction-item-category";
 import { itemRegistry } from "@shared/entities/item-registry";
-import { getConfig, playerConfig } from "@shared/config";
+import { getConfig, playerConfig, type MerchantShopItem } from "@shared/config";
+import { MerchantClient } from "@/entities/environment/merchant";
+import {
+  buildMerchantShopGridEntries,
+  canSellItemToMerchant,
+  type MerchantCategoryTab,
+  type MerchantShopGridEntry,
+} from "@/ui/merchant-ui-helpers";
 import { formatDisplayName } from "@/util/format";
 import { calculateHudScale } from "@/util/hud-scale";
 import { PlayerClient } from "@/entities/player";
@@ -580,7 +587,7 @@ export type InventoryScreenDeps = {
   getEquipment: () => PlayerEquipmentState | null;
   getBank: () => (InventoryItem | null)[];
   getMyPlayer: () => PlayerClient | null;
-  sendDropItem: (slotIndex: number) => void;
+  sendDropItem: (slotIndex: number, amount?: number) => void;
   sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
   sendSwapItems: (from: number, to: number) => void;
   sendSwapBagAndEquipment: (bagIndex: number, equipSlot: EquipmentSlotKey) => void;
@@ -597,6 +604,9 @@ export type InventoryScreenDeps = {
   sendSetSignText: (data: SetSignTextEventData) => void;
   getAuctionSnapshot: () => AuctionHouseSnapshotPayload | null;
   getAuthoredQuests: () => import("@shared/map/quest-types").WorldMapQuestDefinition[];
+  sendMerchantBuy: (merchantId: number, itemIndex: number) => void;
+  sendMerchantSell: (merchantId: number, inventorySlot: number) => void;
+  getCanvas: () => HTMLCanvasElement | null;
 };
 
 function buildCharacterMapFromPlayer(player: PlayerClient): Record<string, number> {
@@ -637,6 +647,15 @@ export class InventoryScreenUI {
   private bankLockerId: number | null = null;
   /** Auction house entity id while auction UI is open (mutually exclusive with bank). */
   private auctionHouseId: number | null = null;
+  /** Merchant entity id while merchant shop dock is open. */
+  private merchantId: number | null = null;
+  private merchantCategoryFilter: MerchantCategoryTab = "all";
+  private merchantTabRects: { id: MerchantCategoryTab; x: number; y: number; w: number; h: number }[] =
+    [];
+  /** First index into filtered merchant shop list for grid windowing. */
+  private merchantShopScrollFirstIndex = 0;
+  private merchantWheelHandler: ((e: WheelEvent) => void) | null = null;
+  private latestGameState: GameState | null = null;
   private auctionCategoryFilter: AuctionItemCategory | "all" = "all";
   private auctionTabRects: { id: AuctionItemCategory | "all"; x: number; y: number; w: number; h: number }[] =
     [];
@@ -745,6 +764,8 @@ export class InventoryScreenUI {
       this.selectedProfessionId = null;
       this.bankLockerId = null;
       this.auctionHouseId = null;
+      this.merchantId = null;
+      this.removeMerchantWheel();
       this.closeInventoryModals();
       this.ctxMenu = null;
     }
@@ -753,6 +774,8 @@ export class InventoryScreenUI {
   public openBank(lockerEntityId: number, inventoryWasAlreadyOpen: boolean): void {
     this.closeInventoryModals();
     this.auctionHouseId = null;
+    this.merchantId = null;
+    this.removeMerchantWheel();
     this.bankLockerId = lockerEntityId;
     this.ctxMenu = null;
     this.open = true;
@@ -762,9 +785,27 @@ export class InventoryScreenUI {
     }
   }
 
+  public openMerchant(merchantEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.closeInventoryModals();
+    this.bankLockerId = null;
+    this.auctionHouseId = null;
+    this.merchantId = merchantEntityId;
+    this.merchantCategoryFilter = "all";
+    this.merchantShopScrollFirstIndex = 0;
+    this.ctxMenu = null;
+    this.open = true;
+    this.activeTab = "inventory";
+    if (!inventoryWasAlreadyOpen) {
+      this.inventoryOpenedViaBankOnly = true;
+    }
+    this.setupMerchantWheel();
+  }
+
   public openAuction(auctionHouseEntityId: number, inventoryWasAlreadyOpen: boolean): void {
     this.closeInventoryModals();
     this.bankLockerId = null;
+    this.merchantId = null;
+    this.removeMerchantWheel();
     this.auctionHouseId = auctionHouseEntityId;
     this.ctxMenu = null;
     this.open = true;
@@ -778,6 +819,8 @@ export class InventoryScreenUI {
   public closeBank(): void {
     this.bankLockerId = null;
     this.auctionHouseId = null;
+    this.merchantId = null;
+    this.removeMerchantWheel();
     this.closeInventoryModals();
     this.ctxMenu = null;
   }
@@ -794,8 +837,106 @@ export class InventoryScreenUI {
     });
   }
 
+  private setupMerchantWheel(): void {
+    this.removeMerchantWheel();
+    const canvas = this.deps.getCanvas();
+    if (!canvas) {
+      return;
+    }
+    this.merchantWheelHandler = (event: WheelEvent) => {
+      if (this.merchantId == null || !this.isOpen() || this.activeTab !== "inventory") {
+        return;
+      }
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (event.clientX - rect.left) * scaleX;
+      const y = (event.clientY - rect.top) * scaleY;
+      if (!this.bankPanelContainsScreenPoint(x, y, canvas.width, canvas.height)) {
+        return;
+      }
+      const B = this.layoutBank(canvas.width, canvas.height);
+      const entries = this.getMerchantFilteredShopEntries();
+      const maxFirst = Math.max(0, entries.length - B.bankSlots);
+      if (maxFirst <= 0) {
+        return;
+      }
+      event.preventDefault();
+      const delta = event.deltaY > 0 ? B.gridCols : -B.gridCols;
+      this.merchantShopScrollFirstIndex = Math.max(
+        0,
+        Math.min(maxFirst, this.merchantShopScrollFirstIndex + delta),
+      );
+    };
+    canvas.addEventListener("wheel", this.merchantWheelHandler, { passive: false });
+  }
+
+  private removeMerchantWheel(): void {
+    if (!this.merchantWheelHandler) {
+      return;
+    }
+    const canvas = this.deps.getCanvas();
+    if (canvas) {
+      canvas.removeEventListener("wheel", this.merchantWheelHandler);
+    }
+    this.merchantWheelHandler = null;
+  }
+
+  private getMerchantShopItemsFromState(): MerchantShopItem[] {
+    if (this.merchantId == null || !this.latestGameState) {
+      return [];
+    }
+    const ent = getEntityById(this.latestGameState, this.merchantId);
+    return ent instanceof MerchantClient ? ent.getShopItems() : [];
+  }
+
+  private getMerchantFilteredShopEntries(): MerchantShopGridEntry[] {
+    return buildMerchantShopGridEntries(
+      this.getMerchantShopItemsFromState(),
+      this.merchantCategoryFilter,
+    );
+  }
+
+  private layoutMerchantCategoryTabs(
+    B: ReturnType<InventoryScreenUI["layoutBank"]>,
+  ): { id: MerchantCategoryTab; x: number; y: number; w: number; h: number }[] {
+    const ids: MerchantCategoryTab[] = ["all", "weapon", "ammo", "item"];
+    const gap = 4;
+    const h = 20;
+    const leftPad = 12;
+    const rightPad = 12;
+    const w = Math.floor((B.bankW - leftPad - rightPad - gap * (ids.length - 1)) / ids.length);
+    let x = B.bankX + leftPad;
+    const y = B.titleY + 8;
+    return ids.map((id) => {
+      const r = { id, x, y, w, h };
+      x += w + gap;
+      return r;
+    });
+  }
+
+  private hitTestMerchantTab(
+    screenX: number,
+    screenY: number,
+    canvasWidth: number,
+    canvasHeight: number,
+  ): MerchantCategoryTab | null {
+    if (this.merchantId == null) {
+      return null;
+    }
+    const B = this.layoutBank(canvasWidth, canvasHeight);
+    const lx = screenX - this.getBankSlideOffsetPx(B.bankW);
+    const ly = screenY;
+    for (const t of this.merchantTabRects) {
+      if (lx >= t.x && lx <= t.x + t.w && ly >= t.y && ly <= t.y + t.h) {
+        return t.id;
+      }
+    }
+    return null;
+  }
+
   private maybeCloseBankIfOutOfRange(gameState: GameState, player: PlayerClient): void {
-    const entityId = this.bankLockerId ?? this.auctionHouseId;
+    const entityId = this.bankLockerId ?? this.auctionHouseId ?? this.merchantId;
     if (entityId == null) {
       return;
     }
@@ -817,7 +958,7 @@ export class InventoryScreenUI {
   }
 
   public isBankOpen(): boolean {
-    return this.bankLockerId != null || this.auctionHouseId != null;
+    return this.bankLockerId != null || this.auctionHouseId != null || this.merchantId != null;
   }
 
   /** When true, pressing E at the locker to dismiss the bank should also close the inventory panel. */
@@ -892,9 +1033,11 @@ export class InventoryScreenUI {
 
   public isHovering(): boolean {
     if (!this.isOpen()) return false;
-    const pos = this.deps.inputManager.getMousePosition();
-    if (!pos || !this.lastW || !this.lastH) return false;
-    return this.isPointOverUi(pos.x, pos.y, this.lastW, this.lastH);
+    if (!this.lastW || !this.lastH) return false;
+    // Use the latest raw canvas mouse position captured by the HUD instead of the
+    // gameplay aim position. The latter intentionally stops updating while the
+    // inventory is hovered, which can otherwise latch hover/aim state incorrectly.
+    return this.isPointOverUi(this._mx, this._my, this.lastW, this.lastH);
   }
 
   private getBagSlotCount(): number {
@@ -1159,7 +1302,7 @@ export class InventoryScreenUI {
 
   private stepBankVisibility(now: number): void {
     const wantBank =
-      (this.bankLockerId != null || this.auctionHouseId != null) &&
+      (this.bankLockerId != null || this.auctionHouseId != null || this.merchantId != null) &&
       this.activeTab === "inventory";
     const target = wantBank ? 1 : 0;
     const dtSeconds =
@@ -1309,9 +1452,20 @@ export class InventoryScreenUI {
     return stackCount > 1 && this.getFirstEmptyVisibleBagIndex() != null;
   }
 
+  private canDropOneFromBagStack(item: InventoryItem | null): boolean {
+    if (!item || !isStackableInventoryItem(item)) {
+      return false;
+    }
+    return (item.state?.count ?? 1) > 1;
+  }
+
   /** Double-click bag slot: weapons -> loadout, wearables -> equipment, consumables -> quick bar. */
   private tryQuickEquipFromBag(bagIdx: number, item: InventoryItem): boolean {
     const t = item.itemType;
+    if (t === "skateboard") {
+      this.deps.sendConsumeItem(null, bagIdx);
+      return true;
+    }
     const loadoutKey = getWeaponLoadoutSlotKey(t);
     if (loadoutKey !== null) {
       const row = weaponLoadoutSlotKeyToIndex(loadoutKey);
@@ -1988,6 +2142,7 @@ export class InventoryScreenUI {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
+    this.latestGameState = gameState;
     this.lastW = ctx.canvas.width;
     this.lastH = ctx.canvas.height;
 
@@ -2000,7 +2155,7 @@ export class InventoryScreenUI {
     const h = ctx.canvas.height;
 
     if (!player || !(player instanceof PlayerClient)) {
-      if (this.bankLockerId != null || this.auctionHouseId != null) {
+      if (this.bankLockerId != null || this.auctionHouseId != null || this.merchantId != null) {
         this.closeBank();
       }
       if (this.open) {
@@ -2049,7 +2204,7 @@ export class InventoryScreenUI {
           ctx.font = "12px Arial";
           ctx.textAlign = "center";
           ctx.fillText(
-            tab.id === "all" ? "All" : tab.id === "weapon" ? "Wpn" : tab.id === "ammo" ? "Ammo" : tab.id === "resource" ? "Res" : "Item",
+            tab.id === "all" ? "All" : tab.id === "weapon" ? "Weapon" : tab.id === "ammo" ? "Ammo" : tab.id === "resource" ? "Res" : "Item",
             tab.x + tab.w / 2,
             tab.y + 15,
           );
@@ -2125,6 +2280,70 @@ export class InventoryScreenUI {
               ctx.lineWidth = 2;
               const p = listing.price;
               const pt = `${p}c`;
+              ctx.strokeText(pt, sx + B.cellSize / 2, sy + 12);
+              ctx.fillText(pt, sx + B.cellSize / 2, sy + 12);
+            }
+          }
+        }
+      } else if (this.merchantId != null) {
+        ctx.fillText("Merchant", B.bankX + 12, B.titleY);
+        ctx.font = "12px Arial";
+        ctx.textAlign = "right";
+        ctx.fillStyle = RPG_COUNTER_GOLD;
+        ctx.fillText(`${player.getCoins()}c`, B.bankX + B.bankW - 12, B.titleY);
+        ctx.textAlign = "left";
+        this.merchantTabRects = this.layoutMerchantCategoryTabs(B);
+        for (const tab of this.merchantTabRects) {
+          const on = tab.id === this.merchantCategoryFilter;
+          ctx.fillStyle = on ? RPG_TAB_ACTIVE_FILL : RPG_TAB_INACTIVE_FILL;
+          ctx.fillRect(tab.x, tab.y, tab.w, tab.h);
+          ctx.strokeStyle = on ? RPG_TAB_ACTIVE_STROKE : RPG_TAB_INACTIVE_STROKE;
+          ctx.strokeRect(tab.x, tab.y, tab.w, tab.h);
+          ctx.fillStyle = RPG_TITLE_CREAM;
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(
+            tab.id === "all" ? "All" : tab.id === "weapon" ? "Weapon" : tab.id === "ammo" ? "Ammo" : "Item",
+            tab.x + tab.w / 2,
+            tab.y + 15,
+          );
+        }
+        const merchantEntries = this.getMerchantFilteredShopEntries();
+        const maxFirst = Math.max(0, merchantEntries.length - B.bankSlots);
+        this.merchantShopScrollFirstIndex = Math.min(this.merchantShopScrollFirstIndex, maxFirst);
+        ctx.textAlign = "left";
+        for (let row = 0; row < B.gridRows; row++) {
+          for (let col = 0; col < B.gridCols; col++) {
+            const idx = row * B.gridCols + col;
+            if (idx >= B.bankSlots) {
+              continue;
+            }
+            const sx = B.gridLeft + col * (B.cellSize + B.cellGap);
+            const sy = B.gridTop + row * (B.cellSize + B.cellGap);
+            const dataIdx = this.merchantShopScrollFirstIndex + idx;
+            const entry = merchantEntries[dataIdx];
+            const isHover = this.hoveredBankSlotIndex === idx && !this.dragState?.isDragging;
+            const invItem: InventoryItem | null = entry ? { itemType: entry.itemType } : null;
+            const blocked = entry ? player.getCoins() < entry.buyPrice : false;
+            ctx.fillStyle = blocked ? "rgba(80, 24, 24, 0.55)" : RPG_SLOT_FILL_DIM;
+            ctx.fillRect(sx, sy, B.cellSize, B.cellSize);
+            ctx.strokeStyle = isHover ? RPG_TAB_ACTIVE_STROKE : RPG_SLOT_STROKE;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(sx, sy, B.cellSize, B.cellSize);
+            if (invItem) {
+              const img = this.deps.assetManager.get(getItemAssetKey(invItem));
+              if (img) {
+                const pad = 6;
+                ctx.drawImage(img, sx + pad, sy + pad, B.cellSize - pad * 2, B.cellSize - pad * 2);
+              }
+            }
+            if (entry) {
+              ctx.font = "bold 11px Arial";
+              ctx.textAlign = "center";
+              ctx.fillStyle = blocked ? "rgba(255,160,160,0.95)" : RPG_COUNTER_GOLD;
+              ctx.strokeStyle = "rgba(6,8,16,0.85)";
+              ctx.lineWidth = 2;
+              const pt = `${entry.buyPrice}c`;
               ctx.strokeText(pt, sx + B.cellSize / 2, sy + 12);
               ctx.fillText(pt, sx + B.cellSize / 2, sy + 12);
             }
@@ -2245,8 +2464,19 @@ export class InventoryScreenUI {
             this.dragState.source.kind === "bag" &&
             this.dragState.source.index !== storageBagIndex;
 
+          const skateboardRidingHere =
+            !isHiddenLoadoutBagSlot &&
+            !isLockedVisibleSlot &&
+            invItem?.itemType === "skateboard" &&
+            ((player as any).skateboardBagIndex1Based ?? 0) === storageBagIndex + 1;
+
           ctx.fillStyle = isLockedVisibleSlot ? "rgba(18, 20, 28, 0.96)" : RPG_SLOT_FILL_DIM;
           ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
+
+          if (skateboardRidingHere) {
+            ctx.fillStyle = "rgba(50, 200, 90, 0.28)";
+            ctx.fillRect(sx, sy, L.cellSize, L.cellSize);
+          }
 
           if (isDragSource) {
             ctx.fillStyle = "rgba(255,255,255,0.08)";
@@ -2255,12 +2485,14 @@ export class InventoryScreenUI {
 
           ctx.strokeStyle = isTarget
             ? "rgba(100, 200, 255, 0.95)"
-            : isActive
-              ? "rgba(255, 234, 182, 0.95)"
-              : isHover
-                ? RPG_TAB_ACTIVE_STROKE
-                : RPG_SLOT_STROKE;
-          ctx.lineWidth = isActive || isTarget ? 2 : 1;
+            : skateboardRidingHere
+              ? "rgba(72, 220, 120, 0.98)"
+              : isActive
+                ? "rgba(255, 234, 182, 0.95)"
+                : isHover
+                  ? RPG_TAB_ACTIVE_STROKE
+                  : RPG_SLOT_STROKE;
+          ctx.lineWidth = isActive || isTarget || skateboardRidingHere ? 2 : 1;
           ctx.strokeRect(sx, sy, L.cellSize, L.cellSize);
 
           if (isLockedVisibleSlot) {
@@ -2439,7 +2671,7 @@ export class InventoryScreenUI {
     if (this.activeTab === "inventory") {
       this.hoveredBagIndex = this.getBagIndexAt(lx, y, L);
       this.hoveredEquipSlot = this.getEquipAt(lx, y, L);
-      if (this.bankLockerId != null || this.auctionHouseId != null) {
+      if (this.bankLockerId != null || this.auctionHouseId != null || this.merchantId != null) {
         const B = this.layoutBank(canvasWidth, canvasHeight);
         this.hoveredBankSlotIndex = this.getBankSlotIndexAt(x, y, B);
       } else {
@@ -2509,6 +2741,14 @@ export class InventoryScreenUI {
           };
           const p = list.price;
           auctionPriceLine = `Price: ${p}c${list.isOwnListing ? " (yours)" : ""}`;
+        }
+      } else if (this.merchantId != null) {
+        const entries = this.getMerchantFilteredShopEntries();
+        const dataIdx = this.merchantShopScrollFirstIndex + this.hoveredBankSlotIndex;
+        const entry = entries[dataIdx];
+        if (entry) {
+          hovered = { itemType: entry.itemType };
+          auctionPriceLine = `Buy: ${entry.buyPrice}c`;
         }
       } else {
         hovered = this.deps.getBank()[this.hoveredBankSlotIndex] ?? null;
@@ -2722,6 +2962,29 @@ export class InventoryScreenUI {
         if (!inPanel) {
           return true;
         }
+      } else if (this.merchantId != null) {
+        const tab = this.hitTestMerchantTab(x, y, canvasWidth, canvasHeight);
+        if (tab != null) {
+          this.merchantCategoryFilter = tab;
+          this.merchantShopScrollFirstIndex = 0;
+          return true;
+        }
+        const pMerchant = this.deps.getMyPlayer();
+        const Bm = this.layoutBank(canvasWidth, canvasHeight);
+        const bIdxM = this.getBankSlotIndexAt(x, y, Bm);
+        if (bIdxM !== null && clickCount >= 2 && pMerchant && this.merchantId != null) {
+          const entries = this.getMerchantFilteredShopEntries();
+          const dataIdx = this.merchantShopScrollFirstIndex + bIdxM;
+          const entry = entries[dataIdx];
+          if (entry && pMerchant.getCoins() >= entry.buyPrice) {
+            this.deps.sendMerchantBuy(this.merchantId, entry.originalIndex);
+          }
+          return true;
+        }
+        this.ctxMenu = null;
+        if (!inPanel) {
+          return true;
+        }
       } else if (this.bankLockerId != null) {
         const B = this.layoutBank(canvasWidth, canvasHeight);
         const bIdx = this.getBankSlotIndexAt(x, y, B);
@@ -2828,6 +3091,15 @@ export class InventoryScreenUI {
       }
       if (item && clickCount >= 2 && this.auctionHouseId != null && canListItemFromBag(item)) {
         this.openAuctionSellForBagIndex(bagIdx);
+        return true;
+      }
+      if (
+        item &&
+        clickCount >= 2 &&
+        this.merchantId != null &&
+        canSellItemToMerchant(item, this.getMerchantShopItemsFromState())
+      ) {
+        this.deps.sendMerchantSell(this.merchantId, bagIdx);
         return true;
       }
       if (item && clickCount >= 2 && this.tryQuickEquipFromBag(bagIdx, item)) {
@@ -3024,12 +3296,25 @@ export class InventoryScreenUI {
           rows.push("Sell");
         }
       }
+      if (this.merchantId != null) {
+        if (it && canSellItemToMerchant(it, this.getMerchantShopItemsFromState())) {
+          rows.push("Sell");
+        }
+      }
       if (this.canSplitBagStack(it)) {
         rows.push("Split");
+      }
+      if (this.canDropOneFromBagStack(it)) {
+        rows.push("Drop 1");
       }
       rows.push("Drop");
       if (it?.itemType === "sign") {
         rows.push("Write");
+      } else if (it?.itemType === "skateboard") {
+        const p = this.deps.getMyPlayer();
+        const idx1 = target.index + 1;
+        const riding = p && ((p as any).skateboardBagIndex1Based ?? 0) === idx1;
+        rows.push(riding ? "Get off" : "Ride");
       } else if (it && itemRegistry.get(it.itemType)?.category === "consumable") {
         rows.push("Use");
       }
@@ -3137,10 +3422,21 @@ export class InventoryScreenUI {
     }
 
     if (!lid) {
-      if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
+      if (label === "Sell" && t.kind === "bag" && this.merchantId != null) {
+        const itSell = this.deps.getInventory()[t.index];
+        if (
+          itSell &&
+          canSellItemToMerchant(itSell, this.getMerchantShopItemsFromState()) &&
+          this.merchantId != null
+        ) {
+          this.deps.sendMerchantSell(this.merchantId, t.index);
+        }
+      } else if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
         this.openAuctionSellForBagIndex(t.index);
       } else if (label === "Split" && t.kind === "bag") {
         this.openSplitStackForBagIndex(t.index);
+      } else if (label === "Drop 1" && t.kind === "bag") {
+        this.deps.sendDropItem(t.index, 1);
       } else if (label === "Drop" && t.kind === "bag") {
         this.deps.sendDropItem(t.index);
       } else if (label === "Drop" && t.kind === "equip") {
@@ -3148,6 +3444,12 @@ export class InventoryScreenUI {
       } else if (label === "Write" && item?.itemType === "sign" && t.kind === "bag") {
         this.openSignTextForBagIndex(t.index);
       } else if (label === "Use" && item && t.kind === "bag") {
+        this.deps.sendConsumeItem(null, t.index);
+      } else if (
+        (label === "Ride" || label === "Get off") &&
+        item?.itemType === "skateboard" &&
+        t.kind === "bag"
+      ) {
         this.deps.sendConsumeItem(null, t.index);
       } else if (label === "Equip" && item && t.kind === "bag") {
         const eqIdx = this.resolveEquipMenuIndex(item);
@@ -3169,10 +3471,21 @@ export class InventoryScreenUI {
       return true;
     }
 
-    if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
+    if (label === "Sell" && t.kind === "bag" && this.merchantId != null) {
+      const itSell2 = this.deps.getInventory()[t.index];
+      if (
+        itSell2 &&
+        canSellItemToMerchant(itSell2, this.getMerchantShopItemsFromState()) &&
+        this.merchantId != null
+      ) {
+        this.deps.sendMerchantSell(this.merchantId, t.index);
+      }
+    } else if (label === "Sell" && t.kind === "bag" && this.auctionHouseId != null) {
       this.openAuctionSellForBagIndex(t.index);
     } else if (label === "Split" && t.kind === "bag") {
       this.openSplitStackForBagIndex(t.index);
+    } else if (label === "Drop 1" && t.kind === "bag") {
+      this.deps.sendDropItem(t.index, 1);
     } else if (label === "Withdraw" && t.kind === "bank") {
       send({ lockerEntityId: lid, action: 1, source: 1, slotIndex: t.index, equipSlotIndex: 255 });
     } else if (label === "Stash" && t.kind === "bag") {
@@ -3205,6 +3518,12 @@ export class InventoryScreenUI {
       } else if (t.kind === "bag") {
         send({ lockerEntityId: lid, action: 3, source: 0, slotIndex: t.index, equipSlotIndex: 255 });
       }
+    } else if (
+      (label === "Ride" || label === "Get off") &&
+      item?.itemType === "skateboard" &&
+      t.kind === "bag"
+    ) {
+      this.deps.sendConsumeItem(null, t.index);
     } else if (label === "Equip" && item) {
       const eqIdx = this.resolveEquipMenuIndex(item);
       if (eqIdx != null) {

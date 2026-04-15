@@ -19,7 +19,6 @@ export interface InputStateQueries {
   getMaxInventorySlots?: () => number;
   getInventoryActiveTab?: () => InventoryUiTab;
   getCameraCenterScreenX?: (canvasWidth: number) => number | null;
-  isMerchantPanelOpen?: () => boolean;
   isCraftingPanelOpen?: () => boolean;
   isBankOpen?: () => boolean;
   isFullscreenMapOpen?: () => boolean;
@@ -30,6 +29,8 @@ export interface InputStateQueries {
   /** If the sign read modal is open, close it and return true so interact (E) does not fall through. */
   tryCloseSignReadModalOnInteractKey?: () => boolean;
   isPlayerDead?: () => boolean;
+  /** When true, block firing and combat roll (skateboard). */
+  isRidingSkateboard?: () => boolean;
 }
 
 /** Typed events emitted by InputManager. */
@@ -47,7 +48,6 @@ export interface InputEventMap {
   selectInventorySlot: { slot: number };
   consumeItem: { itemType: string | null };
   dropItem: { slot: number; amount?: number };
-  merchantKeyDown: { key: string };
   craftingPanelKeyDown: { key: string };
   escape: void;
   respawnRequest: void;
@@ -130,7 +130,6 @@ export class InputManager {
     ...this.inputs,
   };
   private isChatting = false;
-  private merchantPanelConsumedKeys = new Set<string>();
   private queries: InputStateQueries = {};
   private eventListeners = new Map<string, Set<Function>>();
   private mousePosition: Vector2 | null = null;
@@ -165,7 +164,6 @@ export class InputManager {
   private isMovementSuppressed(): boolean {
     return (
       this.isChatting ||
-      (this.queries.isMerchantPanelOpen?.() ?? false) ||
       (this.queries.isCraftingPanelOpen?.() ?? false) ||
       (this.queries.isBankOpen?.() ?? false) ||
       (this.queries.isNpcDialogueOpen?.() ?? false) ||
@@ -201,6 +199,9 @@ export class InputManager {
     timestampMs: number,
     isRepeat: boolean,
   ): void {
+    if (this.queries.isRidingSkateboard?.()) {
+      return;
+    }
     if (!COMBAT_ROLL_DOUBLE_TAP_KEY_CODES.has(eventCode) || isRepeat) {
       return;
     }
@@ -317,7 +318,6 @@ export class InputManager {
         return;
       }
 
-      const isMerchantPanelOpen = queries.isMerchantPanelOpen?.() ?? false;
       const isCraftingPanelOpen = queries.isCraftingPanelOpen?.() ?? false;
       const isBankOpen = queries.isBankOpen?.() ?? false;
       const isNpcDialogueOpen = queries.isNpcDialogueOpen?.() ?? false;
@@ -397,14 +397,6 @@ export class InputManager {
       }
       if (eventCode === "KeyQ") {
         this.emit("inventoryPanelFocusTab", { tab: "quests" });
-        return;
-      }
-
-      if (isMerchantPanelOpen) {
-        if (eventCode === "Escape" || eventCode === "KeyE") {
-          const key = eventCode === "Escape" ? "Escape" : "e";
-          this.emit("merchantKeyDown", { key });
-        }
         return;
       }
 
@@ -548,15 +540,9 @@ export class InputManager {
 
       this.syncMovementSuppression();
 
-      const isMerchantPanelOpen = queries.isMerchantPanelOpen?.() ?? false;
       const isCraftingPanelOpen = queries.isCraftingPanelOpen?.() ?? false;
 
-      if (isMerchantPanelOpen || isCraftingPanelOpen) {
-        return;
-      }
-
-      if (this.merchantPanelConsumedKeys.has(eventKey)) {
-        this.merchantPanelConsumedKeys.delete(eventKey);
+      if (isCraftingPanelOpen) {
         return;
       }
 
@@ -739,6 +725,9 @@ export class InputManager {
    * Trigger weapon fire (for mouse click)
    */
   triggerFire() {
+    if (this.queries.isRidingSkateboard?.()) {
+      return;
+    }
     if (this.syncMovementSuppression()) return;
     this.inputs.fire = true;
     this.hasChanged = true;
@@ -748,6 +737,11 @@ export class InputManager {
    * Release weapon fire (for mouse release)
    */
   releaseFire() {
+    if (this.queries.isRidingSkateboard?.()) {
+      this.inputs.fire = false;
+      this.hasChanged = true;
+      return;
+    }
     if (this.syncMovementSuppression()) return;
     this.inputs.fire = false;
     this.hasChanged = true;

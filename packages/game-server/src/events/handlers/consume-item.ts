@@ -80,6 +80,11 @@ export function onConsumeItem(
   }
 
   if (item && itemIndex !== undefined) {
+    if (item.itemType === "skateboard") {
+      player.toggleSkateboardFromBagIndex(itemIndex);
+      return;
+    }
+
     const entity = player.getEntityManager().createEntityFromItem(item);
     if (!entity) return;
 

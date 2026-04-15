@@ -154,7 +154,7 @@ export function canItemGoInEquipmentSlot(itemType: ItemType, slot: EquipmentSlot
  * Stackable in bag if it carries an explicit count or is registered as ammo.
  */
 export function isStackableInventoryItem(item: InventoryItem): boolean {
-  if (item.itemType === "sign" || typeof item.state?.message === "string") {
+  if (item.itemType === "sign" || item.itemType === "skateboard" || typeof item.state?.message === "string") {
     return false;
   }
   if (item.state && typeof item.state.count === "number") {

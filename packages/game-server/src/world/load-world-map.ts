@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { getConfig } from "@shared/config";
 import type {
   WorldMapDialogueNpcEntry,
+  WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@shared/map/world-map-types";
@@ -34,6 +35,8 @@ export interface WorldMapFile {
   quests?: WorldMapQuestDefinition[];
   /** Optional spawner labels and respawn overrides from the map editor. */
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
+  /** Optional per-tile merchant stock overrides (shopkeeper decal / merchant collidable). */
+  merchantMeta?: WorldMapMerchantEntry[];
 }
 
 function resolveWorldMapJsonPath(): string {

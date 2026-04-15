@@ -153,6 +153,9 @@ export interface HudOptions {
   sendConsumeItem: (itemType: string | null, slotIndex?: number) => void;
   sendDropFromEquipment: (equipSlot: EquipmentSlotKey) => void;
   sendInteract: (targetEntityId: number) => void;
+  sendMerchantBuy: (merchantId: number, itemIndex: number) => void;
+  sendMerchantSell: (merchantId: number, inventorySlot: number) => void;
+  getCanvas: () => HTMLCanvasElement;
   onRequestExitGame?: () => void;
 }
 
@@ -281,6 +284,9 @@ export class Hud {
       getAuthoredQuests: () => this.mapManager.getAuthoredQuests(),
       sendAuctionAction: options.sendAuctionAction,
       getAuctionSnapshot: () => this.auctionSnapshot,
+      sendMerchantBuy: options.sendMerchantBuy,
+      sendMerchantSell: options.sendMerchantSell,
+      getCanvas: options.getCanvas,
     });
 
     this.loadoutStrip = new LoadoutStrip(
@@ -812,6 +818,10 @@ export class Hud {
     this.inventoryScreen.openAuction(auctionHouseEntityId, inventoryWasAlreadyOpen);
   }
 
+  public openMerchant(merchantEntityId: number, inventoryWasAlreadyOpen: boolean): void {
+    this.inventoryScreen.openMerchant(merchantEntityId, inventoryWasAlreadyOpen);
+  }
+
   /** Latest auction house snapshot from server (for inventory UI). */
   public applyAuctionSnapshot(snapshot: AuctionHouseSnapshotPayload): void {
     this.auctionSnapshot = snapshot;
@@ -896,6 +906,9 @@ export class Hud {
     clickCount: number = 1,
   ): boolean {
     if (this.exitGameButtonPanel?.handleClick(x, y)) {
+      return true;
+    }
+    if (this.chatWidget.handleToggleButtonClick(x, y, canvasHeight)) {
       return true;
     }
     if (this.currentGameState) {
