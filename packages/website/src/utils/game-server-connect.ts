@@ -22,7 +22,8 @@ export async function measureGameServerHealthPingMs(
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const res = await fetch(healthUrl, { method: "GET", cache: "no-store", signal: ac.signal });
+    // Avoid cache: "no-store" cross-origin: it can add non-safelisted headers and force CORS preflight.
+    const res = await fetch(healthUrl, { method: "GET", signal: ac.signal });
     if (!res.ok) {
       return null;
     }
@@ -44,7 +45,7 @@ export async function fetchGameServerWorldPickerStats(
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const res = await fetch(statusUrl, { method: "GET", cache: "no-store", signal: ac.signal });
+    const res = await fetch(statusUrl, { method: "GET", signal: ac.signal });
     const elapsed = Math.round(performance.now() - start);
     if (!res.ok) {
       const pingMs = await measureGameServerHealthPingMs(publicWsUrl, timeoutMs);

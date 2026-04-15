@@ -39,35 +39,39 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     // Create uWebSockets app
     this.app = uWS.App({});
 
-    const corsHealth = (res: uWS.HttpResponse) => {
+    /**
+     * Browsers may send a CORS preflight for cross-origin GET when fetch uses {@code cache: "no-store"}
+     * (non–safelisted request headers). OPTIONS must allow those headers or preflight fails.
+     */
+    const writePublicHttpCorsHeaders = (res: uWS.HttpResponse): void => {
       res.writeHeader("Access-Control-Allow-Origin", "*");
       res.writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.writeHeader(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Cache-Control, Pragma, Authorization",
+      );
+      res.writeHeader("Access-Control-Max-Age", "86400");
     };
 
     this.app.options("/health", (res: uWS.HttpResponse) => {
       res.onAborted(() => {});
-      corsHealth(res);
       res.writeStatus("204 No Content");
+      writePublicHttpCorsHeaders(res);
       res.end();
     });
 
     this.app.get("/health", (res: uWS.HttpResponse) => {
       res.onAborted(() => {});
       res.writeStatus("200 OK");
-      res.writeHeader("Content-Type", "text/plain");
-      corsHealth(res);
+      res.writeHeader("Content-Type", "text/plain; charset=utf-8");
+      writePublicHttpCorsHeaders(res);
       res.end("ok");
     });
 
-    const corsPublicStatus = (res: uWS.HttpResponse) => {
-      res.writeHeader("Access-Control-Allow-Origin", "*");
-      res.writeHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    };
-
     this.app.options("/public-status", (res: uWS.HttpResponse) => {
       res.onAborted(() => {});
-      corsPublicStatus(res);
       res.writeStatus("204 No Content");
+      writePublicHttpCorsHeaders(res);
       res.end();
     });
 
@@ -78,7 +82,7 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
       const body = JSON.stringify({ playerCount });
       res.writeStatus("200 OK");
       res.writeHeader("Content-Type", "application/json; charset=utf-8");
-      corsPublicStatus(res);
+      writePublicHttpCorsHeaders(res);
       res.end(body);
     });
 
