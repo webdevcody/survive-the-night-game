@@ -25,6 +25,8 @@ export interface HandlerContext {
   userSessionCache: UserSessionCache;
   /** Stop distributed-session heartbeat tracking for this socket (before cache remove). */
   notifyDistributedSessionSocketClosing?: (socket: ISocketAdapter) => void;
+  /** Remove gameplay idle tracking so periodic idle kicks ignore this socket during teardown. */
+  clearGameplayIdleTracking?: (socket: ISocketAdapter) => void;
   getEntityManager(): IEntityManager;
   getMapManager(): MapManager;
   getGameManagers(): IGameManagers;

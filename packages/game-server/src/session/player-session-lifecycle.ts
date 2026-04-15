@@ -60,8 +60,13 @@ export function afterHumanPlayerJoinedSession(context: HandlerContext): void {
 
 /**
  * Full disconnect teardown: persist, session cache, socket maps, entity despawn, broadcast, post-hooks.
+ * Awaits distributed lease release so a reconnect/login immediately after disconnect does not see a stale
+ * "active session" row while the previous release HTTP request was still in flight.
  */
-export function performPlayerDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
+export async function performPlayerDisconnect(
+  context: HandlerContext,
+  socket: ISocketAdapter,
+): Promise<void> {
   const player = context.players.get(socket.id);
   const displayName = context.playerDisplayNames.get(socket.id);
   const userId = context.userSessionCache.getUserIdBySocket(socket.id);
@@ -74,9 +79,10 @@ export function performPlayerDisconnect(context: HandlerContext, socket: ISocket
   }
 
   context.notifyDistributedSessionSocketClosing?.(socket);
+  context.clearGameplayIdleTracking?.(socket);
 
   if (userId && gameLease) {
-    void releasePlayerGameSessionToWebsite(userId, gameLease.gameSessionId);
+    await releasePlayerGameSessionToWebsite(userId, gameLease.gameSessionId);
   }
 
   context.userSessionCache.removeSocket(socket.id);

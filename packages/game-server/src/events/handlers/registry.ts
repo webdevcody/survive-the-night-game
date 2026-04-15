@@ -29,6 +29,7 @@ import { requestCombatRollHandler } from "./request-combat-roll";
 import { auctionActionHandler } from "./auction-action";
 import { splitInventoryStackHandler } from "./split-inventory-stack";
 import { setSignTextHandler } from "./set-sign-text";
+import { pointerActivityHandler } from "./pointer-activity";
 
 /**
  * Registry of all socket event handlers.
@@ -72,4 +73,5 @@ export const socketEventHandlers: SocketEventHandler[] = [
   auctionActionHandler,
   splitInventoryStackHandler,
   setSignTextHandler,
+  pointerActivityHandler,
 ];

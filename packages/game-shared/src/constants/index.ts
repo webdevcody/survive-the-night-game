@@ -1,6 +1,7 @@
 import { EntityType } from "../types/entity";
 
 export { FISTS_INVENTORY_SENTINEL } from "./inventory-sentinel";
+export { PLAY_IDLE_DISMISS_MESSAGE_STORAGE_KEY } from "./play-session-storage";
 
 // Entities constant - auto-generated from all registries
 // Auto-generation happens in entities/index.ts after all registries are populated

@@ -3,8 +3,8 @@ import { HandlerContext } from "../context";
 import { SocketEventHandler } from "./types";
 import { performPlayerDisconnect } from "@/session/player-session-lifecycle";
 
-export function onDisconnect(context: HandlerContext, socket: ISocketAdapter): void {
-  performPlayerDisconnect(context, socket);
+export async function onDisconnect(context: HandlerContext, socket: ISocketAdapter): Promise<void> {
+  await performPlayerDisconnect(context, socket);
 }
 
 export const disconnectHandler: SocketEventHandler<void> = {

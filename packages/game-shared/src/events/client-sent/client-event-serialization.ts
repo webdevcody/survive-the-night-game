@@ -71,6 +71,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ClientSentEvents.AUCTION_ACTION]: AuctionActionEvent,
   [ClientSentEvents.SPLIT_INVENTORY_STACK]: SplitInventoryStackEvent,
   [ClientSentEvents.SET_SIGN_TEXT]: SetSignTextEvent,
+  [ClientSentEvents.POINTER_ACTIVITY]: NoPayloadEvent,
 };
 
 function isClientSentEvent(event: string): event is ClientSentEventType {

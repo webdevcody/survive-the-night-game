@@ -9,6 +9,9 @@ import PoolManager from "@shared/util/pool-manager";
 export class ClientEventHandlers {
   private gameClient: GameClient;
 
+  private lastPointerActivitySentAt = 0;
+  private static readonly POINTER_ACTIVITY_MIN_INTERVAL_MS = 2000;
+
   // Store canvas and bound handlers for cleanup
   private canvas: HTMLCanvasElement | null = null;
   private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
@@ -94,6 +97,15 @@ export class ClientEventHandlers {
       if (renderer) {
         renderer.updateMousePosition(x, y);
       }
+    }
+
+    const now = performance.now();
+    if (
+      now - this.lastPointerActivitySentAt >= ClientEventHandlers.POINTER_ACTIVITY_MIN_INTERVAL_MS &&
+      !this.gameClient.getSocketManager().getIsDisconnected()
+    ) {
+      this.lastPointerActivitySentAt = now;
+      this.gameClient.getSocketManager().sendPointerActivity();
     }
   }
 

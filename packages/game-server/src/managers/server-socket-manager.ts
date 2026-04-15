@@ -33,6 +33,7 @@ import { VersionMismatchEvent } from "../../../game-shared/src/events/server-sen
 import { AuthRequiredEvent } from "../../../game-shared/src/events/server-sent/events/auth-required-event";
 import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-sent/events/profile-load-failed-event";
 import { DuplicateActiveSessionEvent } from "../../../game-shared/src/events/server-sent/events/duplicate-active-session-event";
+import { SessionIdleTimeoutEvent } from "../../../game-shared/src/events/server-sent/events/session-idle-timeout-event";
 import { YourIdEvent } from "../../../game-shared/src/events/server-sent/events/your-id-event";
 import type { GameModeId } from "@shared/events/server-sent/events/game-started-event";
 import { HandlerContext, onConnection, sendFullState } from "@/events/handlers";
@@ -98,6 +99,11 @@ export class ServerSocketManager implements Broadcaster {
     new Map();
   private leaseHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly LEASE_HEARTBEAT_INTERVAL_MS = 45_000;
+  /** Last time each socket sent a gameplay-related message (excludes PING / PING_UPDATE). */
+  private lastGameplayActivityBySocket: Map<string, number> = new Map();
+  private idleKickTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly IDLE_KICK_AFTER_MS = 5 * 60 * 1000;
+  private static readonly IDLE_KICK_CHECK_INTERVAL_MS = 30_000;
   private registryHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly REGISTRY_HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -243,6 +249,8 @@ export class ServerSocketManager implements Broadcaster {
         this.userSessionCache.setUserSession(socket.id, userId, tokenStr!, { gameSessionId });
         this.registerLeaseHeartbeat(socket.id, userId, gameSessionId);
         this.ensureLeaseHeartbeatLoop();
+        this.touchGameplayActivity(socket.id);
+        this.ensureIdleKickLoop();
         console.log(`Socket ${socket.id} authenticated as user ${userId}`);
 
         this.onConnection(socket, loaded.progress);
@@ -418,6 +426,7 @@ export class ServerSocketManager implements Broadcaster {
       sessionValidator: this.sessionValidator,
       userSessionCache: this.userSessionCache,
       notifyDistributedSessionSocketClosing: (s) => this.handleDistributedSessionSocketClosing(s),
+      clearGameplayIdleTracking: (s) => this.clearGameplayIdleTrackingForSocket(s),
       getEntityManager: () => this.getEntityManager(),
       getMapManager: () => this.getMapManager(),
       getGameManagers: () => this.getGameManagers(),
@@ -645,9 +654,14 @@ export class ServerSocketManager implements Broadcaster {
       }
     }
     this.leaseHeartbeatBySocket.clear();
+    this.lastGameplayActivityBySocket.clear();
     if (this.leaseHeartbeatTimer) {
       clearInterval(this.leaseHeartbeatTimer);
       this.leaseHeartbeatTimer = null;
+    }
+    if (this.idleKickTimer) {
+      clearInterval(this.idleKickTimer);
+      this.idleKickTimer = null;
     }
     if (this.registryHeartbeatTimer) {
       clearInterval(this.registryHeartbeatTimer);
@@ -666,6 +680,50 @@ export class ServerSocketManager implements Broadcaster {
 
   private handleDistributedSessionSocketClosing(socket: ISocketAdapter): void {
     this.clearLeaseHeartbeat(socket.id);
+  }
+
+  private touchGameplayActivity(socketId: string): void {
+    this.lastGameplayActivityBySocket.set(socketId, Date.now());
+  }
+
+  private clearGameplayIdleTrackingForSocket(socket: ISocketAdapter): void {
+    this.lastGameplayActivityBySocket.delete(socket.id);
+  }
+
+  private ensureIdleKickLoop(): void {
+    if (this.idleKickTimer) {
+      return;
+    }
+    this.idleKickTimer = setInterval(() => {
+      this.runIdleKicks();
+    }, ServerSocketManager.IDLE_KICK_CHECK_INTERVAL_MS);
+  }
+
+  private runIdleKicks(): void {
+    const now = Date.now();
+    const threshold = ServerSocketManager.IDLE_KICK_AFTER_MS;
+    const idleMinutes = Math.floor(threshold / 60_000);
+
+    for (const [socketId, lastMs] of this.lastGameplayActivityBySocket.entries()) {
+      if (now - lastMs < threshold) {
+        continue;
+      }
+      const socket = this.io.sockets.sockets.get(socketId);
+      if (!socket) {
+        this.lastGameplayActivityBySocket.delete(socketId);
+        continue;
+      }
+      console.warn(
+        `[ServerSocketManager] Kicking socket ${socketId}: no gameplay activity for ${threshold}ms`,
+      );
+      this.sendEventToSocket(
+        socket,
+        new SessionIdleTimeoutEvent({
+          message: `Disconnected after ${idleMinutes} minutes of inactivity.`,
+        }),
+      );
+      socket.disconnect(true);
+    }
   }
 
   private ensureLeaseHeartbeatLoop(): void {
@@ -775,6 +833,14 @@ export class ServerSocketManager implements Broadcaster {
           : ClientSentEvents[handlerRegistration.event as keyof typeof ClientSentEvents];
 
       socket.on(eventName, (payload: any) => {
+        if (handlerRegistration.event !== "disconnect") {
+          if (
+            handlerRegistration.event !== "PING" &&
+            handlerRegistration.event !== "PING_UPDATE"
+          ) {
+            this.touchGameplayActivity(socket.id);
+          }
+        }
         void Promise.resolve()
           .then(() => handlerRegistration.handler(context, socket, payload))
           .catch((error) => {

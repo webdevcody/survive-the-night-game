@@ -4,6 +4,7 @@ import { PredictionConfigPanel } from "./play/-components/PredictionConfigPanel"
 import { WorldPickerPanel } from "./play/-components/WorldPickerPanel";
 import { SpawnPanel } from "./play/-components/SpawnPanel";
 import { Button } from "~/components/ui/button";
+import { PLAY_IDLE_DISMISS_MESSAGE_STORAGE_KEY } from "@survive-the-night/game-shared/constants";
 import { fetchGameServerWorldPickerStats, SELECTED_GAME_SERVER_WS_URL_KEY } from "~/utils/game-server-connect";
 import { getGameAuthToken } from "~/fn/game-auth";
 import { requireSessionForPlayFn } from "~/fn/guards";
@@ -80,10 +81,12 @@ function GameClientLoader() {
   const [serverPings, setServerPings] = useState<Record<number, number | null>>({});
   const [serverPlayerCounts, setServerPlayerCounts] = useState<Record<number, number | null>>({});
   const [bookmarkedWorldNotice, setBookmarkedWorldNotice] = useState<string | null>(null);
+  const [idleKickDetail, setIdleKickDetail] = useState<string | null>(null);
 
   const handleLeaveGame = () => {
     if (sceneManagerRef.current) {
       sceneManagerRef.current.destroy();
+      sceneManagerRef.current = null;
       delete (window as any).__sceneManager;
     }
     navigate({ to: "/" });
@@ -102,6 +105,14 @@ function GameClientLoader() {
     });
   };
 
+  const handleContinueAfterIdleKick = () => {
+    const qs =
+      bookmarkedWorldId !== undefined
+        ? `?world=${encodeURIComponent(String(bookmarkedWorldId))}`
+        : "";
+    window.location.replace(`/play${qs}`);
+  };
+
   const handleSignOutFromPlay = async () => {
     await authClient.signOut();
     navigate({ to: "/" });
@@ -110,6 +121,22 @@ function GameClientLoader() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (playSearchError !== "idleTimeout") {
+      setIdleKickDetail(null);
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(PLAY_IDLE_DISMISS_MESSAGE_STORAGE_KEY);
+      sessionStorage.removeItem(PLAY_IDLE_DISMISS_MESSAGE_STORAGE_KEY);
+      if (raw?.trim()) {
+        setIdleKickDetail(raw.trim());
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [playSearchError]);
 
   useEffect(() => {
     if (sessionPending) return;
@@ -385,12 +412,22 @@ function GameClientLoader() {
   }, [isClient, gameAuthPhase, serverPickResolved]);
 
   useEffect(() => {
-    return () => {
+    const teardownSceneManager = () => {
       if (sceneManagerRef.current) {
         sceneManagerRef.current.destroy();
         sceneManagerRef.current = null;
         delete (window as any).__sceneManager;
       }
+    };
+
+    const onPageHide = () => {
+      teardownSceneManager();
+    };
+
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      teardownSceneManager();
     };
   }, []);
 
@@ -404,6 +441,30 @@ function GameClientLoader() {
 
   if (!session || sessionError) {
     return null;
+  }
+
+  if (playSearchError === "idleTimeout") {
+    const detail =
+      idleKickDetail ||
+      "The server closed your connection after a period with no activity: moving the mouse on the game view, keys, menus, chat, etc. Network latency pings alone do not count.";
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-black px-6 text-center text-white">
+        <h1 className="text-xl font-semibold">Disconnected — inactive</h1>
+        <p className="max-w-lg text-muted-foreground text-sm">{detail}</p>
+        <p className="max-w-lg text-muted-foreground text-xs">
+          You can jump back in below. If you were away from the keyboard, this saves server resources and
+          keeps the world responsive for everyone else.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button type="button" onClick={handleContinueAfterIdleKick}>
+            Continue to play
+          </Button>
+          <Button type="button" variant="outline" asChild>
+            <Link to="/">Back to home</Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (playSearchError === "duplicateSession") {

@@ -40,6 +40,7 @@ import { onPlayerLevelUp } from "./events/on-player-level-up";
 import { onAuctionSnapshot } from "./events/on-auction-snapshot";
 import { onUserBanned } from "./events/on-user-banned";
 import { onDuplicateActiveSession } from "./events/on-duplicate-active-session";
+import { onSessionIdleTimeout } from "./events/on-session-idle-timeout";
 import {
   ClientEventContext,
   GameStateUpdateContext,
@@ -124,6 +125,9 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.USER_BANNED, (e) => onUserBanned(context, e));
     this.socketManager.on(ServerSentEvents.DUPLICATE_ACTIVE_SESSION, (e) =>
       onDuplicateActiveSession(context, e),
+    );
+    this.socketManager.on(ServerSentEvents.SESSION_IDLE_TIMEOUT, (e) =>
+      onSessionIdleTimeout(context, e),
     );
     this.socketManager.onSocketDisconnect(() => {
       this.handleSocketDisconnect();

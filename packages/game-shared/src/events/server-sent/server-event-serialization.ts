@@ -39,6 +39,7 @@ import { ProfileLoadFailedEvent } from "./events/profile-load-failed-event";
 import { PlayerLevelUpEvent } from "./events/player-level-up-event";
 import { AuctionSnapshotEvent } from "./events/auction-snapshot-event";
 import { DuplicateActiveSessionEvent } from "./events/duplicate-active-session-event";
+import { SessionIdleTimeoutEvent } from "./events/session-idle-timeout-event";
 import {
   serializeEvent,
   deserializeEvent,
@@ -92,6 +93,7 @@ const eventRegistry: Record<string, IBufferWriter> = {
   [ServerSentEvents.PLAYER_LEVEL_UP]: PlayerLevelUpEvent,
   [ServerSentEvents.AUCTION_SNAPSHOT]: AuctionSnapshotEvent,
   [ServerSentEvents.DUPLICATE_ACTIVE_SESSION]: DuplicateActiveSessionEvent,
+  [ServerSentEvents.SESSION_IDLE_TIMEOUT]: SessionIdleTimeoutEvent,
 };
 
 /**

@@ -12,6 +12,14 @@ describe("client event serialization", () => {
     expect(decoded).toEqual([{}]);
   });
 
+  it("registers pointerActivity as a no-payload client event", () => {
+    const buffer = serializeClientEvent(ClientSentEvents.POINTER_ACTIVITY, []);
+    expect(buffer).toBeInstanceOf(ArrayBuffer);
+
+    const decoded = deserializeClientEvent(ClientSentEvents.POINTER_ACTIVITY, buffer!);
+    expect(decoded).toEqual([{}]);
+  });
+
   it("round-trips sneak input state", () => {
     const buffer = serializeClientEvent(ClientSentEvents.PLAYER_INPUT, [
       {

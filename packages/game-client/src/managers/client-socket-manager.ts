@@ -38,6 +38,7 @@ import { ProfileLoadFailedEvent } from "../../../game-shared/src/events/server-s
 import { PlayerLevelUpEvent } from "../../../game-shared/src/events/server-sent/events/player-level-up-event";
 import { AuctionSnapshotEvent } from "../../../game-shared/src/events/server-sent/events/auction-snapshot-event";
 import { DuplicateActiveSessionEvent } from "../../../game-shared/src/events/server-sent/events/duplicate-active-session-event";
+import { SessionIdleTimeoutEvent } from "../../../game-shared/src/events/server-sent/events/session-idle-timeout-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
@@ -94,6 +95,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.PLAYER_LEVEL_UP]: PlayerLevelUpEvent,
   [ServerSentEvents.AUCTION_SNAPSHOT]: AuctionSnapshotEvent,
   [ServerSentEvents.DUPLICATE_ACTIVE_SESSION]: DuplicateActiveSessionEvent,
+  [ServerSentEvents.SESSION_IDLE_TIMEOUT]: SessionIdleTimeoutEvent,
 } as const;
 
 export class ClientSocketManager {
@@ -503,6 +505,14 @@ export class ClientSocketManager {
 
   public sendRequestFullState() {
     this.emitClientEvent(ClientSentEvents.REQUEST_FULL_STATE);
+  }
+
+  /** Throttled by caller; counts as activity for server idle kick (includes mouse on canvas). */
+  public sendPointerActivity(): void {
+    if (!this.socket || this.isDisconnected) {
+      return;
+    }
+    this.emitClientEvent(ClientSentEvents.POINTER_ACTIVITY);
   }
 
   public getIsDisconnected(): boolean {

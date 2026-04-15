@@ -44,6 +44,8 @@ export const ServerSentEvents = {
   AUCTION_SNAPSHOT: "auctionSnapshot",
   /** Another tab or server already holds the active game session for this account. */
   DUPLICATE_ACTIVE_SESSION: "duplicateActiveSession",
+  /** No gameplay-related client messages (excluding transport ping) for the configured idle period. */
+  SESSION_IDLE_TIMEOUT: "sessionIdleTimeout",
 } as const;
 
 export const ClientSentEvents = {
@@ -82,6 +84,8 @@ export const ClientSentEvents = {
   AUCTION_ACTION: "auctionAction",
   SPLIT_INVENTORY_STACK: "splitInventoryStack",
   SET_SIGN_TEXT: "setSignText",
+  /** Throttled: client pointer moved over the game canvas (counts toward server idle kick). */
+  POINTER_ACTIVITY: "pointerActivity",
 } as const;
 
 export type ServerSentEventType = (typeof ServerSentEvents)[keyof typeof ServerSentEvents];
