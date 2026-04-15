@@ -51,6 +51,7 @@ describe("ClientEventHandlers pointer activity", () => {
         updateMousePosition: vi.fn(),
         handleMouseMove: vi.fn(),
         isHoveringInventory: () => false,
+        handleWheel: vi.fn(() => false),
       }),
       getCraftingPanel: () => ({
         isVisible: () => false,
@@ -89,6 +90,7 @@ describe("ClientEventHandlers pointer activity", () => {
         updateMousePosition: vi.fn(),
         handleMouseMove: vi.fn(),
         isHoveringInventory: () => false,
+        handleWheel: vi.fn(() => false),
       }),
       getCraftingPanel: () => ({
         isVisible: () => false,

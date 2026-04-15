@@ -1,17 +1,33 @@
+import { formatDistanceToNow } from "date-fns";
 import { GameState, getEntityById } from "@/state";
 import { PlayerClient } from "@/entities/player";
+import { drawHudFlatPanel, RPG_METADATA_MUTED, RPG_TITLE_CREAM } from "@/ui/rpg-hud-theme";
 import { CommandAutocomplete } from "./command-autocomplete";
 
 const CHAT_FONT_SIZE = 14;
+const CHAT_META_FONT_SIZE = 11;
 const CHAT_FONT_FAMILY = "Arial";
 const CHAT_MONOSPACE_FONT_FAMILY = "Courier New, monospace";
 const CHAT_TEXT_COLOR = "white";
 const CHAT_INPUT_HEIGHT = 44;
-/** Max panel width; messages wrap to this width minus padding. */
-const CHAT_PANEL_MAX_WIDTH = 200;
+const CHAT_META_LINE_HEIGHT = 15;
+const CHAT_BODY_LINE_HEIGHT = 20;
+/** Shared width for message viewport + input + autocomplete (matches HUD flat panel chrome). */
+const CHAT_PANEL_MAX_WIDTH = 300;
+const CHAT_INPUT_PLACEHOLDER = "Press Y to start typing your message";
 const CHAT_LEFT_MARGIN = 12;
-const CHAT_BOTTOM_MARGIN = 210; // Distance from bottom of screen to chat input (above inventory bar)
-const CHAT_TOGGLE_BTN = { w: 88, h: 32, left: 12, bottom: 12 } as const;
+/** Top inset so the centered chat column clears the exit / top HUD. */
+const CHAT_COLUMN_MIN_TOP = 48;
+/** Space between the chat column and the hide-chat / mute row. */
+const CHAT_COLUMN_GAP_ABOVE_TOGGLE = 8;
+const CHAT_TOGGLE_BTN = { w: 148, h: 32, left: 12, bottom: 12 } as const;
+/** Gap between mute/players row (top) and chat toggle (bottom edge), in px. */
+const CHAT_TOGGLE_GAP_ABOVE_MUTE_ROW = 8;
+/** Fixed-height message list when the chat panel is open; content scrolls inside. */
+const CHAT_MESSAGES_VIEWPORT_HEIGHT = 220;
+/** Cap stored chat lines so memory stays bounded. */
+const MAX_STORED_CHAT_MESSAGES = 400;
+const CHAT_SCROLL_BOTTOM_EPS = 2;
 
 interface ChatMessage {
   playerId: number;
@@ -20,27 +36,54 @@ interface ChatMessage {
 }
 
 export class ChatWidget {
+  /** Y-activated typing mode; movement suppression follows this. */
   private showChatInput: boolean = false;
-  /** Message list + input (when open); toggle button is always visible. */
-  private chatPanelOpen: boolean = true;
+  /** Tab-toggled message list + input chrome; default closed. */
+  private chatPanelOpen: boolean = false;
+  /** Distance from canvas bottom to toggle button bottom; synced from HUD so we sit above mute/players row. */
+  private toggleBottomFromCanvasBottom: number = CHAT_TOGGLE_BTN.bottom;
   private chatInput: string = "";
   private chatMessages: ChatMessage[] = [];
   private messageHistory: string[] = [];
   private historyIndex: number = -1;
   private autocomplete: CommandAutocomplete;
-  private readonly CHAT_MESSAGE_TIMEOUT = 10000;
   private readonly MAX_MESSAGE_LENGTH = 60;
   private readonly MAX_HISTORY_LENGTH = 50;
+  /** Scroll offset inside the message viewport (px);0 = top of buffer. */
+  private chatMessagesScrollTopPx = 0;
+  /** When true, keep the newest messages in view (updates when new lines arrive). */
+  private chatStickToBottom = true;
+  /** Last frame's max scroll (content height − viewport height); used for wheel clamp between renders. */
+  private lastChatMaxScrollPx = 0;
 
   constructor() {
     this.autocomplete = new CommandAutocomplete();
   }
 
-  public update(): void {
-    const now = Date.now();
-    this.chatMessages = this.chatMessages.filter(
-      (message) => now - message.timestamp < this.CHAT_MESSAGE_TIMEOUT
-    );
+  /**
+   * Place the toggle above the mute + players-online strip (same bottom/height as mute layout).
+   */
+  public setToggleBottomReserve(
+    muteLayout: { bottom: number; height: number },
+    gapPx: number = CHAT_TOGGLE_GAP_ABOVE_MUTE_ROW
+  ): void {
+    this.toggleBottomFromCanvasBottom = muteLayout.bottom + muteLayout.height + gapPx;
+  }
+
+  public isChatPanelOpen(): boolean {
+    return this.chatPanelOpen;
+  }
+
+  public isChatComposing(): boolean {
+    return this.showChatInput;
+  }
+
+  /** Exit typing mode after a successful send; keeps the panel open. */
+  public endChatComposition(): void {
+    this.showChatInput = false;
+    this.chatInput = "";
+    this.autocomplete.reset();
+    this.historyIndex = -1;
   }
 
   public toggleChatInput(): void {
@@ -60,6 +103,8 @@ export class ChatWidget {
       this.showChatInput = false;
       this.chatInput = "";
       this.autocomplete.reset();
+    } else {
+      this.chatStickToBottom = true;
     }
   }
 
@@ -161,6 +206,10 @@ export class ChatWidget {
     const isSystem = playerId === 0;
     const truncatedMessage = isSystem ? message : message.slice(0, this.MAX_MESSAGE_LENGTH);
 
+    if (this.chatMessages.length >= MAX_STORED_CHAT_MESSAGES) {
+      this.chatMessages.shift();
+    }
+
     this.chatMessages.push({
       playerId,
       message: truncatedMessage,
@@ -182,10 +231,85 @@ export class ChatWidget {
     return CHAT_LEFT_MARGIN;
   }
 
+  /**
+   * Stacks message viewport (height `msgH`) + input (`CHAT_INPUT_HEIGHT`) with no gap.
+   * Vertical position: center that combined block on the **canvas** at
+   * `(canvasHeight - combinedH) / 2`, then clamp so the column stays at or below
+   * `CHAT_COLUMN_MIN_TOP` and entirely above the hide-chat control (see `bandBottom`).
+   * (Centering only inside the band skews upward because the band ends well above the canvas midpoint.)
+   */
+  private getChatColumnLayout(canvasHeight: number): {
+    panelTop: number;
+    panelH: number;
+    inputTopY: number;
+  } {
+    const toggleTopY =
+      canvasHeight - this.toggleBottomFromCanvasBottom - CHAT_TOGGLE_BTN.h;
+    const bandBottom = toggleTopY - CHAT_COLUMN_GAP_ABOVE_TOGGLE;
+    const bandH = Math.max(0, bandBottom - CHAT_COLUMN_MIN_TOP);
+
+    const desiredMsgH = CHAT_MESSAGES_VIEWPORT_HEIGHT;
+    let msgH = Math.min(desiredMsgH, Math.max(0, bandH - CHAT_INPUT_HEIGHT));
+    msgH = Math.max(48, msgH);
+    if (msgH + CHAT_INPUT_HEIGHT > bandH) {
+      msgH = Math.max(0, bandH - CHAT_INPUT_HEIGHT);
+    }
+    const combinedH = msgH + CHAT_INPUT_HEIGHT;
+
+    const minTop = CHAT_COLUMN_MIN_TOP;
+    const maxTop = bandBottom - combinedH;
+    const idealTop = (canvasHeight - combinedH) / 2;
+    const panelTop =
+      maxTop >= minTop ? Math.max(minTop, Math.min(maxTop, idealTop)) : minTop;
+    const inputTopY = panelTop + msgH;
+    return { panelTop, panelH: msgH, inputTopY };
+  }
+
+  /**
+   * Screen rect for the scrollable message viewport (when the chat panel is open).
+   */
+  public getMessagesPanelLayout(
+    _canvasWidth: number,
+    canvasHeight: number
+  ): { x: number; y: number; w: number; h: number } | null {
+    if (!this.chatPanelOpen) {
+      return null;
+    }
+    const w = CHAT_PANEL_MAX_WIDTH;
+    const x = this.getPanelX();
+    const { panelTop, panelH } = this.getChatColumnLayout(canvasHeight);
+    return { x, y: panelTop, w, h: panelH };
+  }
+
+  /**
+   * Scroll the message list when the pointer is over the panel. Returns true if the event was consumed.
+   */
+  public handleWheel(
+    x: number,
+    y: number,
+    deltaY: number,
+    canvasWidth: number,
+    canvasHeight: number
+  ): boolean {
+    const rect = this.getMessagesPanelLayout(canvasWidth, canvasHeight);
+    if (!rect || x < rect.x || x > rect.x + rect.w || y < rect.y || y > rect.y + rect.h) {
+      return false;
+    }
+
+    const prevTop = this.chatStickToBottom ? this.lastChatMaxScrollPx : this.chatMessagesScrollTopPx;
+    this.chatStickToBottom = false;
+    const maxScroll = Math.max(0, this.lastChatMaxScrollPx);
+    this.chatMessagesScrollTopPx = Math.max(0, Math.min(maxScroll, prevTop + deltaY));
+    if (this.chatMessagesScrollTopPx >= maxScroll - CHAT_SCROLL_BOTTOM_EPS) {
+      this.chatStickToBottom = true;
+    }
+    return true;
+  }
+
   private getToggleButtonRect(canvasHeight: number): { x: number; y: number; w: number; h: number } {
     return {
       x: CHAT_TOGGLE_BTN.left,
-      y: canvasHeight - CHAT_TOGGLE_BTN.bottom - CHAT_TOGGLE_BTN.h,
+      y: canvasHeight - this.toggleBottomFromCanvasBottom - CHAT_TOGGLE_BTN.h,
       w: CHAT_TOGGLE_BTN.w,
       h: CHAT_TOGGLE_BTN.h,
     };
@@ -193,15 +317,16 @@ export class ChatWidget {
 
   private renderChatToggleButton(ctx: CanvasRenderingContext2D): void {
     const { x, y, w, h } = this.getToggleButtonRect(ctx.canvas.height);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-    this.fillRoundRect(ctx, x, y, w, h, 6);
-    ctx.strokeStyle = "rgba(200, 200, 200, 0.5)";
-    ctx.lineWidth = 1;
-    this.strokeRoundRect(ctx, x, y, w, h, 6);
+    const { width: cw, height: ch } = ctx.canvas;
+    drawHudFlatPanel(ctx, x, y, w, h, cw, ch);
+    ctx.save();
     ctx.font = `12px ${CHAT_FONT_FAMILY}`;
-    ctx.fillStyle = CHAT_TEXT_COLOR;
-    const label = this.chatPanelOpen ? "Hide chat" : "Chat";
-    ctx.fillText(label, x + 10, y + h / 2 + 4);
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const label = this.chatPanelOpen ? "Hide chat (Tab)" : "Open chat (Tab)";
+    ctx.fillText(label, x + w / 2, y + h / 2);
+    ctx.restore();
   }
 
   /** Word-wrap using the active canvas font so lines fit `maxWidth`. */
@@ -247,75 +372,124 @@ export class ChatWidget {
   }
 
   private renderChatMessages(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    const messages = [...this.chatMessages];
-    const lineHeight = 20;
-    const maxMessages = 8;
+    const messages = this.chatMessages;
     const padding = 10;
+    const messageGap = 6;
     const width = CHAT_PANEL_MAX_WIDTH;
     const panelX = this.getPanelX();
     const textMaxWidth = width - padding * 2;
+    const layout = this.getMessagesPanelLayout(ctx.canvas.width, ctx.canvas.height);
+    if (!layout) {
+      return;
+    }
+    const { y: blockTop, h: viewportH } = layout;
 
-    const processedMessages = messages.slice(-maxMessages).map((chat) => {
-      let text: string;
-      const isSystem = chat.playerId === 0;
-      if (isSystem) {
-        text = chat.message;
-      } else {
-        const entity = getEntityById(gameState, chat.playerId);
-        const userName =
-          entity instanceof PlayerClient ? entity.getDisplayName() : "Unknown";
-        text = `${userName}: ${chat.message}`;
-      }
-      ctx.font = isSystem
-        ? `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`
-        : `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
-      const lines = this.wrapTextToWidth(ctx, text, textMaxWidth);
-      return { ...chat, lines, lineCount: lines.length, isSystem };
-    });
+    type ProcessedRow =
+      | { kind: "meta"; text: string; mono: boolean }
+      | { kind: "body"; text: string; mono: boolean };
 
-    const totalHeight =
-      processedMessages.reduce((acc, msg) => acc + msg.lineCount * lineHeight, 0) + padding * 2;
+    const processedMessages: { rows: ProcessedRow[]; blockHeight: number }[] = messages.map(
+      (chat) => {
+        const isSystem = chat.playerId === 0;
+        const rows: ProcessedRow[] = [];
+        let blockHeight = 0;
+        const rel = formatDistanceToNow(new Date(chat.timestamp), { addSuffix: true });
 
-    const toggleReserve =
-      CHAT_TOGGLE_BTN.bottom + CHAT_TOGGLE_BTN.h + 10;
-    const maxBottom = ctx.canvas.height - toggleReserve;
-    let blockTop = Math.max(
-      48,
-      Math.round((ctx.canvas.height - totalHeight) / 2),
+        if (isSystem) {
+          ctx.font = `${CHAT_META_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`;
+          const metaLines = this.wrapTextToWidth(ctx, rel, textMaxWidth);
+          for (const line of metaLines) {
+            rows.push({ kind: "meta", text: line, mono: true });
+            blockHeight += CHAT_META_LINE_HEIGHT;
+          }
+          ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`;
+          const bodyLines = this.wrapTextToWidth(ctx, chat.message, textMaxWidth);
+          for (const line of bodyLines) {
+            rows.push({ kind: "body", text: line, mono: true });
+            blockHeight += CHAT_BODY_LINE_HEIGHT;
+          }
+        } else {
+          const entity = getEntityById(gameState, chat.playerId);
+          const userName =
+            entity instanceof PlayerClient ? entity.getDisplayName() : "Unknown";
+          const metaText = `${userName} · ${rel}`;
+          ctx.font = `${CHAT_META_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+          const headerLines = this.wrapTextToWidth(ctx, metaText, textMaxWidth);
+          for (const line of headerLines) {
+            rows.push({ kind: "meta", text: line, mono: false });
+            blockHeight += CHAT_META_LINE_HEIGHT;
+          }
+          ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+          const bodyLines = this.wrapTextToWidth(ctx, chat.message, textMaxWidth);
+          for (const line of bodyLines) {
+            rows.push({ kind: "body", text: line, mono: false });
+            blockHeight += CHAT_BODY_LINE_HEIGHT;
+          }
+        }
+        return { rows, blockHeight: blockHeight + messageGap };
+      },
     );
-    if (blockTop + totalHeight > maxBottom) {
-      blockTop = Math.max(48, maxBottom - totalHeight);
+
+    const contentHeight =
+      processedMessages.reduce((acc, m) => acc + m.blockHeight, 0) + padding * 2;
+    const maxScroll = Math.max(0, contentHeight - viewportH);
+
+    let scrollTop: number;
+    if (this.chatStickToBottom) {
+      scrollTop = maxScroll;
+    } else {
+      scrollTop = Math.max(0, Math.min(maxScroll, this.chatMessagesScrollTopPx));
     }
-
-    if (messages.length > 0) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      this.fillRoundRect(ctx, panelX, blockTop, width, totalHeight, 8);
+    if (scrollTop >= maxScroll - CHAT_SCROLL_BOTTOM_EPS) {
+      this.chatStickToBottom = true;
+      scrollTop = maxScroll;
     }
+    this.chatMessagesScrollTopPx = scrollTop;
+    this.lastChatMaxScrollPx = maxScroll;
 
-    ctx.fillStyle = CHAT_TEXT_COLOR;
-    let currentY = blockTop + padding;
+    const { width: cw, height: ch } = ctx.canvas;
+    drawHudFlatPanel(ctx, panelX, blockTop, width, viewportH, cw, ch);
 
-    for (const chat of processedMessages) {
-      ctx.font = chat.isSystem
-        ? `${CHAT_FONT_SIZE}px ${CHAT_MONOSPACE_FONT_FAMILY}`
-        : `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(panelX, blockTop, width, viewportH);
+    ctx.clip();
 
-      for (const line of chat.lines) {
-        ctx.fillText(line, panelX + padding, currentY + CHAT_FONT_SIZE);
-        currentY += lineHeight;
+    let currentY = blockTop + padding - scrollTop;
+
+    for (const msg of processedMessages) {
+      for (const row of msg.rows) {
+        if (row.kind === "meta") {
+          ctx.font = `${CHAT_META_FONT_SIZE}px ${
+            row.mono ? CHAT_MONOSPACE_FONT_FAMILY : CHAT_FONT_FAMILY
+          }`;
+          ctx.fillStyle = RPG_METADATA_MUTED;
+          ctx.fillText(row.text, panelX + padding, currentY + CHAT_META_FONT_SIZE);
+          currentY += CHAT_META_LINE_HEIGHT;
+        } else {
+          ctx.font = `${CHAT_FONT_SIZE}px ${
+            row.mono ? CHAT_MONOSPACE_FONT_FAMILY : CHAT_FONT_FAMILY
+          }`;
+          ctx.fillStyle = CHAT_TEXT_COLOR;
+          ctx.fillText(row.text, panelX + padding, currentY + CHAT_FONT_SIZE);
+          currentY += CHAT_BODY_LINE_HEIGHT;
+        }
       }
+      currentY += messageGap;
     }
+
+    ctx.restore();
   }
 
   private renderChatInput(ctx: CanvasRenderingContext2D): void {
-    if (!this.showChatInput) return;
+    if (!this.chatPanelOpen) return;
 
     const width = CHAT_PANEL_MAX_WIDTH;
     const x = this.getPanelX();
-    const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN;
+    const y = this.getChatColumnLayout(ctx.canvas.height).inputTopY;
+    const { width: cw, height: ch } = ctx.canvas;
 
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    this.fillRoundRect(ctx, x, y, width, CHAT_INPUT_HEIGHT, 8);
+    drawHudFlatPanel(ctx, x, y, width, CHAT_INPUT_HEIGHT, cw, ch);
 
     ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
     const textY = y + CHAT_INPUT_HEIGHT / 2 + 5;
@@ -327,16 +501,27 @@ export class ChatWidget {
     ctx.rect(textX, y + 4, textClipW, CHAT_INPUT_HEIGHT - 8);
     ctx.clip();
 
-    if (!this.chatInput) {
+    if (!this.showChatInput) {
+      ctx.fillStyle = RPG_METADATA_MUTED;
+      ctx.fillText(CHAT_INPUT_PLACEHOLDER, textX, textY);
+    } else if (!this.chatInput) {
       ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
       ctx.fillText("Enter send · Esc cancel", textX, textY);
     } else {
       ctx.fillStyle = CHAT_TEXT_COLOR;
-      ctx.fillText(this.chatInput + "\u258C", textX, textY);
+      const displayText = this.chatInput + "\u258C";
+      const fullW = ctx.measureText(displayText).width;
+      ctx.font = `11px ${CHAT_FONT_FAMILY}`;
+      const counterLabel = `${this.chatInput.length}/${this.MAX_MESSAGE_LENGTH}`;
+      const counterReserve = ctx.measureText(counterLabel).width + 10;
+      ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
+      const maxTextW = Math.max(0, textClipW - counterReserve);
+      const scrollX = fullW <= maxTextW ? 0 : fullW - maxTextW;
+      ctx.fillText(displayText, textX - scrollX, textY);
     }
     ctx.restore();
 
-    if (this.chatInput) {
+    if (this.showChatInput && this.chatInput) {
       ctx.font = `11px ${CHAT_FONT_FAMILY}`;
       const charCount = `${this.chatInput.length}/${this.MAX_MESSAGE_LENGTH}`;
       const charCountWidth = ctx.measureText(charCount).width;
@@ -361,7 +546,7 @@ export class ChatWidget {
     const hintHeight = 22;
     const height = suggestions.length * lineHeight + padding * 2 + hintHeight;
 
-    const y = ctx.canvas.height - CHAT_BOTTOM_MARGIN - height - 4;
+    const y = this.getChatColumnLayout(ctx.canvas.height).inputTopY - height - 4;
 
     ctx.fillStyle = "rgba(30, 30, 30, 0.95)";
     this.fillRoundRect(ctx, x, y, width, height, 8);
@@ -387,7 +572,7 @@ export class ChatWidget {
 
     ctx.fillStyle = "rgba(150, 150, 150, 0.7)";
     ctx.font = `11px ${CHAT_FONT_FAMILY}`;
-    ctx.fillText("↑↓ Tab · Esc close", x + padding, y + height - 6);
+    ctx.fillText("↑↓ Shift+Tab · Esc close", x + padding, y + height - 6);
   }
 
   private addRoundRectPath(

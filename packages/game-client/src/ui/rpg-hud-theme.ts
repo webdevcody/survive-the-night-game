@@ -108,3 +108,24 @@ export function rpgPanelBorderWidth(canvasWidth: number, canvasHeight: number): 
   const scale = calculateHudScale(canvasWidth, canvasHeight);
   return Math.max(2, Math.round(2 * scale));
 }
+
+/**
+ * Flat HUD control rectangle: mute/players-online chip, chat toggle, exit button, etc.
+ * Matches `Panel.drawPanelBackground` when panel settings use `RPG_HUD_PANEL_BG` and
+ * `RPG_BORDER_GOLD` (see `MuteButtonPanel`, `PlayersOnlinePanel`).
+ */
+export function drawHudFlatPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  canvasWidth: number,
+  canvasHeight: number,
+): void {
+  ctx.fillStyle = RPG_HUD_PANEL_BG;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = RPG_BORDER_GOLD;
+  ctx.lineWidth = rpgPanelBorderWidth(canvasWidth, canvasHeight);
+  ctx.strokeRect(x, y, w, h);
+}

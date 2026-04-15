@@ -484,7 +484,6 @@ export class Hud {
   public update(gameState: GameState): void {
     this.currentGameState = gameState;
     this.gameMessagesPanel.update();
-    this.chatWidget.update();
   }
 
   /** Run once per frame before camera + input (see InventoryScreenUI.tickPanelAnimations). */
@@ -677,6 +676,7 @@ export class Hud {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.muteButtonPanel.updatePosition(width, height);
     this.playersOnlinePanel.updatePosition(width, height, this.muteButtonPanel.getLayout());
+    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
     this.muteButtonPanel.render(ctx, gameState);
     this.playersOnlinePanel.render(ctx, gameState);
     ctx.restore();
@@ -765,6 +765,22 @@ export class Hud {
   // Delegate chat methods to ChatWidget
   public toggleChatInput(): void {
     this.chatWidget.toggleChatInput();
+  }
+
+  public toggleChatPanel(): void {
+    this.chatWidget.toggleChatPanel();
+  }
+
+  public isChatPanelOpen(): boolean {
+    return this.chatWidget.isChatPanelOpen();
+  }
+
+  public isChatComposing(): boolean {
+    return this.chatWidget.isChatComposing();
+  }
+
+  public endChatComposition(): void {
+    this.chatWidget.endChatComposition();
   }
 
   public updateChatInput(key: string, shiftKey: boolean = false): void {
@@ -891,6 +907,18 @@ export class Hud {
     return this.muteButtonPanel.isMouseOver(this.mouseX, this.mouseY, this.canvasHeight);
   }
 
+  /** Returns true if the wheel event was handled (e.g. chat scroll). */
+  public handleWheel(event: WheelEvent, canvas: HTMLCanvasElement): boolean {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+    this.muteButtonPanel.updatePosition(canvas.width, canvas.height);
+    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
+    return this.chatWidget.handleWheel(x, y, event.deltaY, canvas.width, canvas.height);
+  }
+
   public isHoveringExitGameButton(): boolean {
     if (!this.exitGameButtonPanel) {
       return false;
@@ -908,6 +936,8 @@ export class Hud {
     if (this.exitGameButtonPanel?.handleClick(x, y)) {
       return true;
     }
+    this.muteButtonPanel.updatePosition(canvasWidth, canvasHeight);
+    this.chatWidget.setToggleBottomReserve(this.muteButtonPanel.getLayout());
     if (this.chatWidget.handleToggleButtonClick(x, y, canvasHeight)) {
       return true;
     }

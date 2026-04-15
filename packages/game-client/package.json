@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@survive-the-night/game-server": "*",
-    "@survive-the-night/game-shared": "*"
+    "@survive-the-night/game-shared": "*",
+    "date-fns": "^4.1.0"
   }
 }

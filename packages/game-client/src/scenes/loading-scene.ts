@@ -5,6 +5,9 @@ import { SceneManager } from "./scene-manager";
 import { NameEntryScene } from "./name-entry-scene";
 import { GameScene } from "./game-scene";
 
+/** Same asset as `WorldPickerPanel` (`/world-picker-bg-pixel.png`). */
+const LOADING_BACKGROUND_SRC = "/world-picker-bg-pixel.png";
+
 export class LoadingScene extends Scene {
   private assetManager: AssetManager;
   private soundManager: SoundManager;
@@ -14,12 +17,22 @@ export class LoadingScene extends Scene {
   private currentStep: number = 0;
   private currentStage: string = "Initializing...";
   private isComplete: boolean = false;
+  private backgroundImage: HTMLImageElement | null = null;
+  private backgroundReady: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, sceneManager?: SceneManager) {
     super(canvas);
     this.sceneManager = sceneManager || (window as any).__sceneManager;
     this.assetManager = new AssetManager();
     this.soundManager = new SoundManager();
+
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      this.backgroundReady = true;
+    };
+    img.src = LOADING_BACKGROUND_SRC;
+    this.backgroundImage = img;
   }
 
   async init(): Promise<void> {
@@ -76,9 +89,33 @@ export class LoadingScene extends Scene {
   render(): void {
     const { width, height } = this.canvas;
 
-    // Clear screen
     this.ctx.fillStyle = "#000000";
     this.ctx.fillRect(0, 0, width, height);
+
+    if (this.backgroundReady && this.backgroundImage) {
+      const img = this.backgroundImage;
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      if (iw > 0 && ih > 0) {
+        const scale = Math.max(width / iw, height / ih);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        const dx = (width - dw) / 2;
+        const dy = (height - dh) / 2;
+        const prevSmoothing = this.ctx.imageSmoothingEnabled;
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(img, dx, dy, dw, dh);
+        this.ctx.imageSmoothingEnabled = prevSmoothing;
+      }
+
+      // Match WorldPickerPanel: `from-black/75 via-black/60 to-black/85`
+      const overlay = this.ctx.createLinearGradient(0, 0, 0, height);
+      overlay.addColorStop(0, "rgba(0,0,0,0.75)");
+      overlay.addColorStop(0.5, "rgba(0,0,0,0.6)");
+      overlay.addColorStop(1, "rgba(0,0,0,0.85)");
+      this.ctx.fillStyle = overlay;
+      this.ctx.fillRect(0, 0, width, height);
+    }
 
     // Draw title
     this.ctx.fillStyle = "#ffffff";

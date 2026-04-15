@@ -31,6 +31,10 @@ export interface InputStateQueries {
   isPlayerDead?: () => boolean;
   /** When true, block firing and combat roll (skateboard). */
   isRidingSkateboard?: () => boolean;
+  /** Chat message panel visibility (Tab). */
+  isChatPanelOpen?: () => boolean;
+  /** Y-activated typing mode; drives movement suppression. */
+  isChatComposing?: () => boolean;
 }
 
 /** Typed events emitted by InputManager. */
@@ -39,6 +43,7 @@ export interface InputEventMap {
   inventoryPanelFocusTab: { tab: InventoryUiTab };
   toggleQuestJournal: void;
   toggleChat: void;
+  toggleChatPanel: void;
   chatInput: { key: string; shiftKey: boolean };
   sendChat: void;
   toggleMute: void;
@@ -129,7 +134,6 @@ export class InputManager {
   private lastInputs = {
     ...this.inputs,
   };
-  private isChatting = false;
   private queries: InputStateQueries = {};
   private eventListeners = new Map<string, Set<Function>>();
   private mousePosition: Vector2 | null = null;
@@ -161,9 +165,17 @@ export class InputManager {
     );
   }
 
+  private isChatComposing(): boolean {
+    return this.queries.isChatComposing?.() ?? false;
+  }
+
+  private isChatPanelOpenFromQuery(): boolean {
+    return this.queries.isChatPanelOpen?.() ?? false;
+  }
+
   private isMovementSuppressed(): boolean {
     return (
-      this.isChatting ||
+      this.isChatComposing() ||
       (this.queries.isCraftingPanelOpen?.() ?? false) ||
       (this.queries.isBankOpen?.() ?? false) ||
       (this.queries.isNpcDialogueOpen?.() ?? false) ||
@@ -262,26 +274,21 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Handle chat mode FIRST - block ALL game inputs when chatting
-      if (eventKey === "y" && !this.isChatting) {
-        this.isChatting = true;
-        this.clearInputs();
-        this.emit("toggleChat");
+      // Tab toggles chat panel (plain Tab never reaches chat autocomplete; use Shift+Tab there).
+      if (eventCode === "Tab") {
+        e.preventDefault();
+        this.emit("toggleChatPanel");
         return;
       }
 
-      // If chatting, block ALL inputs except chat-specific keys
-      if (this.isChatting) {
+      if (this.isChatComposing()) {
         if (eventKey === "escape") {
-          this.isChatting = false;
           this.emit("toggleChat");
           return;
         }
 
         if (eventKey === "enter") {
-          this.isChatting = false;
           this.emit("sendChat");
-          this.emit("toggleChat");
           return;
         }
 
@@ -290,6 +297,17 @@ export class InputManager {
         }
 
         this.emit("chatInput", { key: e.key, shiftKey: e.shiftKey });
+        return;
+      }
+
+      if (this.isChatPanelOpenFromQuery() && eventKey === "escape") {
+        this.emit("toggleChatPanel");
+        return;
+      }
+
+      if (eventKey === "y") {
+        this.clearInputs();
+        this.emit("toggleChat");
         return;
       }
 
@@ -633,7 +651,7 @@ export class InputManager {
   }
 
   isChatInputActive() {
-    return this.isChatting;
+    return this.isChatComposing();
   }
 
   getInputs() {

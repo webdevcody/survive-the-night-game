@@ -211,6 +211,8 @@ export class GameClient {
         const player = getPlayer();
         return player instanceof PlayerClient && player.isOnSkateboard();
       },
+      isChatPanelOpen: () => this.hud?.isChatPanelOpen() ?? false,
+      isChatComposing: () => this.hud?.isChatComposing() ?? false,
     });
 
     this.setupInputEvents();
@@ -333,6 +335,7 @@ export class GameClient {
 
     // Chat
     im.on("toggleChat", () => this.hud.toggleChatInput());
+    im.on("toggleChatPanel", () => this.hud.toggleChatPanel());
     im.on("chatInput", ({ key, shiftKey }) => this.hud.updateChatInput(key, shiftKey));
     im.on("sendChat", () => {
       const message = this.hud.getChatInput();
@@ -340,6 +343,7 @@ export class GameClient {
         this.hud.saveChatMessage(message.trim());
         this.socketManager?.sendChatMessage(message.trim());
         this.hud.clearChatInput();
+        this.hud.endChatComposition();
       }
     });
 

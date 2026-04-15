@@ -19,6 +19,7 @@ export class ClientEventHandlers {
   private boundMouseMoveHandler: ((e: MouseEvent) => void) | null = null;
   private boundMouseDownHandler: ((e: MouseEvent) => void) | null = null;
   private boundMouseUpHandler: ((e: MouseEvent) => void) | null = null;
+  private boundWheelHandler: ((e: WheelEvent) => void) | null = null;
 
   constructor(gameClient: GameClient) {
     this.gameClient = gameClient;
@@ -35,6 +36,7 @@ export class ClientEventHandlers {
     this.boundMouseMoveHandler = (e: MouseEvent) => this.handleMouseMove(e, canvas);
     this.boundMouseDownHandler = (e: MouseEvent) => this.handleMouseDown(e, canvas);
     this.boundMouseUpHandler = (e: MouseEvent) => this.handleMouseUp(e, canvas);
+    this.boundWheelHandler = (e: WheelEvent) => this.handleWheel(e, canvas);
 
     // Mouse move event listener
     canvas.addEventListener("mousemove", this.boundMouseMoveHandler);
@@ -44,6 +46,8 @@ export class ClientEventHandlers {
 
     // Mouse up event listener
     canvas.addEventListener("mouseup", this.boundMouseUpHandler);
+
+    canvas.addEventListener("wheel", this.boundWheelHandler, { passive: false });
 
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -76,6 +80,10 @@ export class ClientEventHandlers {
       if (this.boundMouseUpHandler) {
         this.canvas.removeEventListener("mouseup", this.boundMouseUpHandler);
         this.boundMouseUpHandler = null;
+      }
+      if (this.boundWheelHandler) {
+        this.canvas.removeEventListener("wheel", this.boundWheelHandler);
+        this.boundWheelHandler = null;
       }
       this.canvas = null;
     }
@@ -198,6 +206,13 @@ export class ClientEventHandlers {
     // Block weapon release when fullscreen map is open
     if (!isFullscreenMapOpen && !isCraftingPanelOpen && !isNpcDialogueOpen) {
       this.gameClient.getInputManager().releaseFire();
+    }
+  }
+
+  private handleWheel(e: WheelEvent, canvas: HTMLCanvasElement): void {
+    const hud = this.gameClient.getHud();
+    if (hud?.handleWheel(e, canvas)) {
+      e.preventDefault();
     }
   }
 
