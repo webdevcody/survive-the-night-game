@@ -2,10 +2,11 @@
 export { GameServer } from "./core/server";
 
 // Start the server (main entry point)
+import { LISTEN_PORT } from "@/config/env";
 import { GameServer } from "./core/server";
 
 async function main() {
-  const gameServer = new GameServer();
+  const gameServer = new GameServer(LISTEN_PORT);
   await gameServer.bootstrap();
 
   let shutdownStarted = false;

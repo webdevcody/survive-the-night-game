@@ -2,6 +2,19 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+/** HTTP + WebSocket listen port. Railway and most PaaS set {@code PORT}; local dev often uses 3001. */
+export const LISTEN_PORT: number = (() => {
+  const raw = process.env.PORT;
+  if (raw != null && raw !== "") {
+    const n = Number(raw);
+    if (Number.isInteger(n) && n > 0 && n < 65536) {
+      return n;
+    }
+    console.warn(`[env] Invalid PORT "${raw}", using 3001`);
+  }
+  return 3001;
+})();
+
 export const DEFAULT_ADMIN_PASSWORD = "default-admin-password";
 
 export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
