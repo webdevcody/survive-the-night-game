@@ -99,6 +99,14 @@ export class GameServer {
     return this.socketManager.releaseAllDistributedGameSessionLeases();
   }
 
+  /**
+   * Stop accepting connections, disconnect all players with full cleanup, clear DB session locks for this
+   * server instance, and stop background socket timers. Call before {@link stop} on SIGTERM/SIGINT.
+   */
+  public gracefulShutdown(): Promise<void> {
+    return this.socketManager.gracefulShutdown();
+  }
+
   public broadcastEvent<T>(event: GameEvent<T>): void {
     this.socketManager.broadcastEvent(event);
   }

@@ -21,6 +21,12 @@ export interface IServerAdapter {
   listen(port: number, callback?: () => void): void;
 
   /**
+   * Stop accepting new TCP connections (existing sockets stay open until closed).
+   * Optional: not all adapters support this.
+   */
+  stopAcceptingNewConnections?(): void;
+
+  /**
    * Get connected sockets
    */
   readonly sockets: {

@@ -3,40 +3,33 @@ export { GameServer } from "./core/server";
 
 // Start the server (main entry point)
 import { GameServer } from "./core/server";
-import { ServerUpdatingEvent } from "../../game-shared/src/events/server-sent/events/server-updating-event";
 
 async function main() {
   const gameServer = new GameServer();
   await gameServer.bootstrap();
 
-  process.on("SIGINT", async () => {
-    try {
-      await gameServer.persistConnectedPlayersLastPositions();
-    } catch (e) {
-      console.warn("[SIGINT] persist player positions failed:", e);
+  let shutdownStarted = false;
+  const shutdown = async (signal: string) => {
+    if (shutdownStarted) {
+      return;
     }
+    shutdownStarted = true;
+    console.log(`[${signal}] graceful shutdown…`);
     try {
-      await gameServer.releaseAllDistributedGameSessionLeases();
+      await gameServer.gracefulShutdown();
     } catch (e) {
-      console.warn("[SIGINT] release game session leases failed:", e);
+      console.warn(`[${signal}] gracefulShutdown failed:`, e);
     }
     gameServer.stop();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", () => {
+    void shutdown("SIGINT");
   });
 
-  process.on("SIGTERM", async () => {
-    console.log("Server updating...");
-    try {
-      await gameServer.persistConnectedPlayersLastPositions();
-    } catch (e) {
-      console.warn("[SIGTERM] persist player positions failed:", e);
-    }
-    try {
-      await gameServer.releaseAllDistributedGameSessionLeases();
-    } catch (e) {
-      console.warn("[SIGTERM] release game session leases failed:", e);
-    }
-    gameServer.broadcastEvent(new ServerUpdatingEvent());
-    gameServer.stop();
+  process.on("SIGTERM", () => {
+    void shutdown("SIGTERM");
   });
 }
 

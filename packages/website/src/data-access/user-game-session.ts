@@ -3,7 +3,7 @@ import { database } from "~/db";
 import { user } from "~/db/schema";
 
 /** Heartbeat older than this is treated as stale and another server may claim the lease. */
-export const GAME_SESSION_LEASE_STALE_SQL = sql`now() - interval '5 minutes'`;
+export const GAME_SESSION_LEASE_STALE_SQL = sql`now() - interval '3 minutes'`;
 
 export type ClaimGameSessionResult =
   | { ok: true }
@@ -11,7 +11,7 @@ export type ClaimGameSessionResult =
 
 /**
  * Atomically claim the single active game session lease for a user.
- * Succeeds when there is no lease or the previous heartbeat is stale (5+ minutes).
+ * Succeeds when there is no lease or the previous heartbeat is stale (3+ minutes).
  */
 export async function claimGameSessionLease(
   userId: string,

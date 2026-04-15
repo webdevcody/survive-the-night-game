@@ -68,6 +68,7 @@ import { emptyProfessionProgress, normalizeProfessionProgress } from "@shared/ut
 import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
+import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import uWS from "uwebsockets.js";
 import { performPlayerDisconnect } from "@/session/player-session-lifecycle";
 
@@ -108,6 +109,8 @@ export class ServerSocketManager implements Broadcaster {
   private static readonly IDLE_KICK_CHECK_INTERVAL_MS = 30_000;
   private registryHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly REGISTRY_HEARTBEAT_INTERVAL_MS = 30_000;
+  /** When true: refuse new player sessions and reject in-flight connects before {@code onConnection}. */
+  private isShuttingDown: boolean = false;
 
   constructor(port: number, gameServer: GameServer) {
     this.port = port;
@@ -166,6 +169,11 @@ export class ServerSocketManager implements Broadcaster {
     KillTracker.getInstance().initialize(this.players);
 
     this.io.on("connection", (socket: ISocketAdapter) => {
+      if (this.isShuttingDown) {
+        socket.disconnect(true);
+        return;
+      }
+
       const { displayName, version, gameAuthToken } = socket.handshake.query;
 
       const rawDisplayName = displayName
@@ -249,6 +257,12 @@ export class ServerSocketManager implements Broadcaster {
           return;
         }
 
+        if (this.isShuttingDown) {
+          await releasePlayerGameSessionToWebsite(userId, gameSessionId);
+          socket.disconnect(true);
+          return;
+        }
+
         this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
         this.userSessionCache.setUserSession(socket.id, userId, tokenStr!, { gameSessionId });
         this.registerLeaseHeartbeat(socket.id, userId, gameSessionId);
@@ -256,6 +270,15 @@ export class ServerSocketManager implements Broadcaster {
         this.touchGameplayActivity(socket.id);
         this.ensureIdleKickLoop();
         console.log(`Socket ${socket.id} authenticated as user ${userId}`);
+
+        if (this.isShuttingDown) {
+          await releasePlayerGameSessionToWebsite(userId, gameSessionId);
+          this.userSessionCache.removeSocket(socket.id);
+          this.playerDisplayNames.delete(socket.id);
+          this.clearLeaseHeartbeat(socket.id);
+          socket.disconnect(true);
+          return;
+        }
 
         this.onConnection(socket, loaded.progress);
       })().catch((err) => {
@@ -658,6 +681,58 @@ export class ServerSocketManager implements Broadcaster {
         tasks.push(releasePlayerGameSessionToWebsite(userId, lease.gameSessionId));
       }
     }
+    this.clearShutdownIntervalsAndLeaseTracking();
+    await Promise.all(tasks);
+  }
+
+  /**
+   * Railway / deploy shutdown: stop accepting clients, persist tiles, notify, disconnect everyone with
+   * full teardown ({@link performPlayerDisconnect}), bulk-clear DB leases for this server id, stop timers.
+   */
+  public async gracefulShutdown(): Promise<void> {
+    if (this.isShuttingDown) {
+      return;
+    }
+    this.isShuttingDown = true;
+
+    this.io.stopAcceptingNewConnections?.();
+
+    try {
+      await this.persistConnectedPlayersLastPositions();
+    } catch (e) {
+      console.warn("[gracefulShutdown] persist player positions failed:", e);
+    }
+
+    try {
+      this.broadcastEvent(new ServerUpdatingEvent());
+    } catch (e) {
+      console.warn("[gracefulShutdown] broadcast ServerUpdatingEvent failed:", e);
+    }
+
+    const sockets = Array.from(this.io.sockets.sockets.values());
+    await Promise.all(
+      sockets.map(async (socket) => {
+        await this.disconnectSocketWithCleanup(socket);
+        try {
+          socket.disconnect(true);
+        } catch {
+          /* ignore */
+        }
+      }),
+    );
+
+    if (GAME_SERVER_API_KEY) {
+      try {
+        await clearServerSessionLeasesOnWebsite(this.gameServerInstanceId);
+      } catch (e) {
+        console.warn("[gracefulShutdown] clear_server_leases failed:", e);
+      }
+    }
+
+    this.clearShutdownIntervalsAndLeaseTracking();
+  }
+
+  private clearShutdownIntervalsAndLeaseTracking(): void {
     this.leaseHeartbeatBySocket.clear();
     this.lastGameplayActivityBySocket.clear();
     if (this.leaseHeartbeatTimer) {
@@ -672,7 +747,6 @@ export class ServerSocketManager implements Broadcaster {
       clearInterval(this.registryHeartbeatTimer);
       this.registryHeartbeatTimer = null;
     }
-    await Promise.all(tasks);
   }
 
   private registerLeaseHeartbeat(socketId: string, userId: string, gameSessionId: string): void {

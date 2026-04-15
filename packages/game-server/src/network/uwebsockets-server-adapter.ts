@@ -20,6 +20,7 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
   private socketAdapters: Map<string, ISocketAdapter> = new Map();
   private connectionHandlers: Array<(socket: ISocketAdapter) => void> = [];
   private nextSocketId: number = 0;
+  private listenSocket: uWS.us_listen_socket | null = null;
   private wsMap: WeakMap<uWS.WebSocket<WebSocketUserData>, ISocketAdapter> = new WeakMap();
   /** Set by ServerSocketManager when editor map reload HTTP is enabled (dev). */
   private editorReloadWorldMapHandler:
@@ -218,6 +219,7 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
     // uWebSockets listens directly on the port - no need for HTTP server
     this.app.listen(port, (token: uWS.us_listen_socket | false) => {
       if (token) {
+        this.listenSocket = token;
         console.log(`uWebSockets listening on port ${port}`);
         if (callback) {
           callback();
@@ -226,6 +228,17 @@ export class UWebSocketsServerAdapter implements IServerAdapter {
         console.error(`Failed to listen on port ${port}`);
       }
     });
+  }
+
+  /**
+   * Stop accepting new connections; existing WebSockets remain until closed.
+   */
+  stopAcceptingNewConnections(): void {
+    if (!this.listenSocket) {
+      return;
+    }
+    uWS.us_listen_socket_close(this.listenSocket);
+    this.listenSocket = null;
   }
 
   get sockets(): {
