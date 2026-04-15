@@ -69,6 +69,7 @@ import { reconcilePlayerQuestStateWithMap } from "@/quests/quest-runtime";
 import { XP_PER_ZOMBIE_KILL } from "@shared/util/experience-level";
 import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/events/game-message-event";
 import uWS from "uwebsockets.js";
+import { performPlayerDisconnect } from "@/session/player-session-lifecycle";
 
 /**
  * Any and all functionality related to sending server side events
@@ -99,10 +100,11 @@ export class ServerSocketManager implements Broadcaster {
     new Map();
   private leaseHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly LEASE_HEARTBEAT_INTERVAL_MS = 45_000;
-  /** Last time each socket sent a gameplay-related message (excludes PING / PING_UPDATE). */
+  /** Last time each socket sent an explicit client-side activity heartbeat. */
   private lastGameplayActivityBySocket: Map<string, number> = new Map();
+  private disconnectTasksBySocket: Map<string, Promise<void>> = new Map();
   private idleKickTimer: ReturnType<typeof setInterval> | null = null;
-  private static readonly IDLE_KICK_AFTER_MS = 5 * 60 * 1000;
+  private static readonly IDLE_KICK_AFTER_MS = 2 * 60 * 1000;
   private static readonly IDLE_KICK_CHECK_INTERVAL_MS = 30_000;
   private registryHeartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private static readonly REGISTRY_HEARTBEAT_INTERVAL_MS = 30_000;
@@ -225,6 +227,8 @@ export class ServerSocketManager implements Broadcaster {
           socket.disconnect(true);
           return;
         }
+
+        await this.evictExistingSocketForUser(userId, socket);
 
         const gameSessionId = randomUUID();
         const claimed = await claimPlayerGameSessionToWebsite(
@@ -425,6 +429,7 @@ export class ServerSocketManager implements Broadcaster {
       profanityCensor: this.profanityCensor,
       sessionValidator: this.sessionValidator,
       userSessionCache: this.userSessionCache,
+      performManagedDisconnect: (s) => this.disconnectSocketWithCleanup(s),
       notifyDistributedSessionSocketClosing: (s) => this.handleDistributedSessionSocketClosing(s),
       clearGameplayIdleTracking: (s) => this.clearGameplayIdleTrackingForSocket(s),
       getEntityManager: () => this.getEntityManager(),
@@ -682,6 +687,65 @@ export class ServerSocketManager implements Broadcaster {
     this.clearLeaseHeartbeat(socket.id);
   }
 
+  private disconnectSocketWithCleanup(socket: ISocketAdapter): Promise<void> {
+    const existingTask = this.disconnectTasksBySocket.get(socket.id);
+    if (existingTask) {
+      return existingTask;
+    }
+
+    const task = (async () => {
+      try {
+        await performPlayerDisconnect(this.getHandlerContext(), socket);
+      } finally {
+        this.disconnectTasksBySocket.delete(socket.id);
+      }
+    })();
+
+    this.disconnectTasksBySocket.set(socket.id, task);
+    return task;
+  }
+
+  private async evictExistingSocketForUser(
+    userId: string,
+    incomingSocket: ISocketAdapter,
+  ): Promise<void> {
+    const existingSocketId = this.userSessionCache.getSocketIdByUser(userId);
+    if (!existingSocketId || existingSocketId === incomingSocket.id) {
+      return;
+    }
+
+    const existingSocket = this.io.sockets.sockets.get(existingSocketId);
+    if (!existingSocket) {
+      console.warn(
+        `[ServerSocketManager] Clearing stale local socket mapping ${existingSocketId} for user ${userId}.`,
+      );
+      const stalePlayer = this.players.get(existingSocketId);
+      if (stalePlayer) {
+        this.getEntityManager().despawnEntity(stalePlayer.getId(), "immediate");
+        this.players.delete(existingSocketId);
+      }
+      this.playerDisplayNames.delete(existingSocketId);
+      this.playerColors.delete(existingSocketId);
+      this.clearLeaseHeartbeat(existingSocketId);
+      this.lastGameplayActivityBySocket.delete(existingSocketId);
+      this.userSessionCache.removeSocket(existingSocketId);
+      return;
+    }
+
+    console.warn(
+      `[ServerSocketManager] Replacing existing socket ${existingSocketId} for user ${userId} with ${incomingSocket.id}.`,
+    );
+    this.sendEventToSocket(
+      existingSocket,
+      new DuplicateActiveSessionEvent({
+        message: "Another connection took over this account.",
+      }),
+    );
+    const cleanupTask = this.disconnectSocketWithCleanup(existingSocket);
+    existingSocket.disconnect(true);
+    await cleanupTask;
+  }
+
   private touchGameplayActivity(socketId: string): void {
     this.lastGameplayActivityBySocket.set(socketId, Date.now());
   }
@@ -722,6 +786,7 @@ export class ServerSocketManager implements Broadcaster {
           message: `Disconnected after ${idleMinutes} minutes of inactivity.`,
         }),
       );
+      void this.disconnectSocketWithCleanup(socket);
       socket.disconnect(true);
     }
   }
@@ -751,6 +816,7 @@ export class ServerSocketManager implements Broadcaster {
               "Your game session is no longer valid. Another connection may have taken over this account.",
           }),
         );
+        void this.disconnectSocketWithCleanup(socket);
         socket.disconnect(true);
       }
       this.clearLeaseHeartbeat(socketId);
@@ -833,13 +899,8 @@ export class ServerSocketManager implements Broadcaster {
           : ClientSentEvents[handlerRegistration.event as keyof typeof ClientSentEvents];
 
       socket.on(eventName, (payload: any) => {
-        if (handlerRegistration.event !== "disconnect") {
-          if (
-            handlerRegistration.event !== "PING" &&
-            handlerRegistration.event !== "PING_UPDATE"
-          ) {
-            this.touchGameplayActivity(socket.id);
-          }
+        if (handlerRegistration.event === "POINTER_ACTIVITY") {
+          this.touchGameplayActivity(socket.id);
         }
         void Promise.resolve()
           .then(() => handlerRegistration.handler(context, socket, payload))

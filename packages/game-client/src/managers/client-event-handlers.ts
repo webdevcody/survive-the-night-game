@@ -9,8 +9,10 @@ import PoolManager from "@shared/util/pool-manager";
 export class ClientEventHandlers {
   private gameClient: GameClient;
 
-  private lastPointerActivitySentAt = 0;
-  private static readonly POINTER_ACTIVITY_MIN_INTERVAL_MS = 2000;
+  private lastMouseMoveAt = 0;
+  private pointerActivityTimer: ReturnType<typeof setInterval> | null = null;
+  private static readonly POINTER_ACTIVITY_WINDOW_MS = 30_000;
+  private static readonly POINTER_ACTIVITY_HEARTBEAT_MS = 30_000;
 
   // Store canvas and bound handlers for cleanup
   private canvas: HTMLCanvasElement | null = null;
@@ -27,6 +29,7 @@ export class ClientEventHandlers {
    */
   setupEventListeners(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
+    this.lastMouseMoveAt = 0;
 
     // Create bound handlers
     this.boundMouseMoveHandler = (e: MouseEvent) => this.handleMouseMove(e, canvas);
@@ -43,6 +46,12 @@ export class ClientEventHandlers {
     canvas.addEventListener("mouseup", this.boundMouseUpHandler);
 
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    if (!this.pointerActivityTimer) {
+      this.pointerActivityTimer = setInterval(() => {
+        this.flushPointerActivityHeartbeat();
+      }, ClientEventHandlers.POINTER_ACTIVITY_HEARTBEAT_MS);
+    }
   }
 
   /**
@@ -50,6 +59,11 @@ export class ClientEventHandlers {
    * Should be called when the game client is unmounted
    */
   cleanup(): void {
+    if (this.pointerActivityTimer) {
+      clearInterval(this.pointerActivityTimer);
+      this.pointerActivityTimer = null;
+    }
+
     if (this.canvas) {
       if (this.boundMouseMoveHandler) {
         this.canvas.removeEventListener("mousemove", this.boundMouseMoveHandler);
@@ -98,15 +112,7 @@ export class ClientEventHandlers {
         renderer.updateMousePosition(x, y);
       }
     }
-
-    const now = performance.now();
-    if (
-      now - this.lastPointerActivitySentAt >= ClientEventHandlers.POINTER_ACTIVITY_MIN_INTERVAL_MS &&
-      !this.gameClient.getSocketManager().getIsDisconnected()
-    ) {
-      this.lastPointerActivitySentAt = now;
-      this.gameClient.getSocketManager().sendPointerActivity();
-    }
+    this.lastMouseMoveAt = Date.now();
   }
 
   /**
@@ -214,4 +220,18 @@ export class ClientEventHandlers {
   /**
    * Get player inventory
    */
+
+  private flushPointerActivityHeartbeat(): void {
+    const socketManager = this.gameClient.getSocketManager();
+    if (!socketManager || socketManager.getIsDisconnected()) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - this.lastMouseMoveAt > ClientEventHandlers.POINTER_ACTIVITY_WINDOW_MS) {
+      return;
+    }
+
+    socketManager.sendPointerActivity();
+  }
 }

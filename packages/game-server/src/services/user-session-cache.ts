@@ -30,7 +30,7 @@ export class UserSessionCache {
 
   /**
    * Associate a socket with an authenticated user.
-   * Does not evict other sockets for the same user — duplicate sessions are rejected at DB claim time.
+   * Replaces any previous local socket mapping for that user.
    */
   setUserSession(
     socketId: string,
@@ -38,6 +38,13 @@ export class UserSessionCache {
     sessionToken: string,
     gameLease: GameSessionLease,
   ): void {
+    const previousSocketId = this.userToSocket.get(userId);
+    if (previousSocketId && previousSocketId !== socketId) {
+      this.socketToUser.delete(previousSocketId);
+      this.socketToToken.delete(previousSocketId);
+      this.socketToGameSessionLease.delete(previousSocketId);
+    }
+
     this.socketToUser.set(socketId, userId);
     this.userToSocket.set(userId, socketId);
     this.socketToToken.set(socketId, sessionToken);
@@ -70,7 +77,7 @@ export class UserSessionCache {
    */
   removeSocket(socketId: string): void {
     const userId = this.socketToUser.get(socketId);
-    if (userId) {
+    if (userId && this.userToSocket.get(userId) === socketId) {
       this.userToSocket.delete(userId);
     }
     this.socketToUser.delete(socketId);

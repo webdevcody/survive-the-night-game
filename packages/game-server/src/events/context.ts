@@ -23,6 +23,8 @@ export interface HandlerContext {
   profanityCensor: TextCensor;
   sessionValidator: SessionValidator;
   userSessionCache: UserSessionCache;
+  /** Shared disconnect path with de-duplication for forced and transport closes. */
+  performManagedDisconnect?: (socket: ISocketAdapter) => Promise<void>;
   /** Stop distributed-session heartbeat tracking for this socket (before cache remove). */
   notifyDistributedSessionSocketClosing?: (socket: ISocketAdapter) => void;
   /** Remove gameplay idle tracking so periodic idle kicks ignore this socket during teardown. */
