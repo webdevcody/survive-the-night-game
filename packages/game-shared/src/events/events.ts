@@ -46,6 +46,8 @@ export const ServerSentEvents = {
   DUPLICATE_ACTIVE_SESSION: "duplicateActiveSession",
   /** No gameplay-related client messages (excluding transport ping) for the configured idle period. */
   SESSION_IDLE_TIMEOUT: "sessionIdleTimeout",
+  /** Player fully evaded incoming zombie damage (e.g. MISS floater). */
+  PLAYER_EVADED: "playerEvaded",
 } as const;
 
 export const ClientSentEvents = {

@@ -23,6 +23,7 @@ import { ClientPoison } from "./poison";
 import { ClientAcidTrigger } from "./acid-trigger";
 import { ClientInfiniteRun } from "./infinite-run";
 import { ClientBank } from "./bank";
+import { ClientHoldInteract } from "./hold-interact";
 
 // remember to update the extension type ids in extension-type-encoding.ts when adding a new extension
 export const clientExtensionsMap = {
@@ -50,6 +51,7 @@ export const clientExtensionsMap = {
   [ExtensionTypes.ACID_TRIGGER]: ClientAcidTrigger,
   [ExtensionTypes.INFINITE_RUN]: ClientInfiniteRun,
   [ExtensionTypes.BANK]: ClientBank,
+  [ExtensionTypes.HOLD_INTERACT]: ClientHoldInteract,
 } as const;
 
 export {
@@ -77,4 +79,5 @@ export {
   ClientAcidTrigger,
   ClientInfiniteRun,
   ClientBank,
+  ClientHoldInteract,
 };

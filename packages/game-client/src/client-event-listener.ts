@@ -6,6 +6,7 @@ import { ClientSocketManager } from "@/managers/client-socket-manager";
 import { GameState } from "@/state";
 import { InterpolationManager } from "@/managers/interpolation";
 import { onPlayerHurt } from "./events/on-player-hurt";
+import { onPlayerEvaded } from "./events/on-player-evaded";
 import { onPlayerDeath } from "./events/on-player-death";
 import { onPlayerLeft } from "./events/on-player-left";
 import { onPlayerAttacked } from "./events/on-player-attacked";
@@ -79,6 +80,7 @@ export class ClientEventListener {
     this.socketManager.on(ServerSentEvents.YOUR_ID, (e) => this.handleYourId(e));
 
     this.socketManager.on(ServerSentEvents.PLAYER_HURT, (e) => onPlayerHurt(context, e));
+    this.socketManager.on(ServerSentEvents.PLAYER_EVADED, (e) => onPlayerEvaded(context, e));
     this.socketManager.on(ServerSentEvents.PLAYER_DEATH, (e) => onPlayerDeath(context, e));
     this.socketManager.on(ServerSentEvents.PLAYER_ATTACKED, (e) => onPlayerAttacked(context, e));
     this.socketManager.on(ServerSentEvents.PLAYER_LEFT, (e) => onPlayerLeft(context, e));

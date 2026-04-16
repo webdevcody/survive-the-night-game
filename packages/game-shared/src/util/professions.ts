@@ -113,11 +113,19 @@ export const PROFESSION_DEFINITIONS: Record<ProfessionId, ProfessionDefinition> 
   tailoring: {
     id: "tailoring",
     label: "Tailoring",
-    description: "Patchwork armor and utility clothing built from cloth, leather, and treated gear.",
+    description:
+      "Patchwork armor and utility clothing from cloth and leather—including hides tanned from zombie skin.",
     station: "workbench",
     palette: ["cloth", "leather_strips", "chemical_reagents"],
     unlocks: [
       { level: 1, recipeId: "cloth_hood", label: "Cloth Hood" },
+      { level: 1, recipeId: "leather", label: "Tanned Leather" },
+      { level: 1, recipeId: "leather_cap", label: "Leather Cap" },
+      { level: 1, recipeId: "leather_jerkin", label: "Leather Jerkin" },
+      { level: 1, recipeId: "leather_bracers", label: "Leather Bracers" },
+      { level: 1, recipeId: "leather_pants", label: "Leather Pants" },
+      { level: 1, recipeId: "leather_boots", label: "Leather Boots" },
+      { level: 1, recipeId: "leather_backpack", label: "Leather Backpack" },
       { level: 5, recipeId: "patchwork_vest", label: "Patchwork Vest" },
       { level: 9, recipeId: "stitched_pants", label: "Stitched Pants" },
       { level: 13, recipeId: "survivor_boots", label: "Survivor Boots" },

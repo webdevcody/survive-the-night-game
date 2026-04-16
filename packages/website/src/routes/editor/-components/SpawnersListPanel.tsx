@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { useEditorStore } from "../-store";
@@ -12,10 +13,9 @@ import {
   isPlayerSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import { getMapSideLength, isMapCellInEditorCameraView } from "../-utils";
+import { EditorSpawnSpriteIcon } from "./EditorSpawnSpriteIcon";
 
 const sectionLabel = "text-[10px] font-medium uppercase tracking-wide text-gray-500";
-const modeBtn =
-  "!rounded-none text-xs h-7 px-2 min-w-0 border-0 shadow-none flex-1";
 
 function spawnLabel(id: number): string {
   return SPAWN_PALETTE_ENTRIES.find((e) => e.id === id)?.label ?? `Spawn ${id}`;
@@ -31,14 +31,15 @@ export function SpawnersListPanel() {
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
   const focusCameraOnMapCell = useEditorStore((state) => state.focusCameraOnMapCell);
   const openSpawnerMetaEditor = useEditorStore((state) => state.openSpawnerMetaEditor);
-  const spawnerSidebarMode = useEditorStore((state) => state.spawnerSidebarMode);
   const spawnerPlaceTileId = useEditorStore((state) => state.spawnerPlaceTileId);
-  const setSpawnerSidebarMode = useEditorStore((state) => state.setSpawnerSidebarMode);
   const setSpawnerPlaceTileId = useEditorStore((state) => state.setSpawnerPlaceTileId);
+  const clearSpawnerPlacePick = useEditorStore((state) => state.clearSpawnerPlacePick);
+  const spawnerPlaceInputResetSeq = useEditorStore((state) => state.spawnerPlaceInputResetSeq);
 
   const [typeaheadOpen, setTypeaheadOpen] = useState(false);
   const [typeaheadQuery, setTypeaheadQuery] = useState("");
   const comboRef = useRef<HTMLDivElement>(null);
+  const spawnerTypeaheadResetSkipFirst = useRef(true);
 
   const { playerPlaceOptions, groupedPlaceTypes } = useMemo(() => {
     const q = typeaheadQuery.trim().toLowerCase();
@@ -73,12 +74,17 @@ export function SpawnersListPanel() {
   const typeaheadHasResults =
     playerPlaceOptions.length > 0 || groupedPlaceTypes.length > 0;
 
+  const showSpawnerTypeClear =
+    typeaheadQuery.length > 0 ||
+    (spawnerPlaceTileId != null && spawnerPlaceTileId > 0);
+
   useEffect(() => {
-    if (spawnerSidebarMode !== "place") return;
-    const id = useEditorStore.getState().spawnerPlaceTileId;
-    const entry = id != null ? SPAWNER_META_CONFIGURABLE_ENTRIES.find((e) => e.id === id) : null;
-    setTypeaheadQuery(entry?.label ?? "");
-  }, [spawnerSidebarMode]);
+    if (spawnerTypeaheadResetSkipFirst.current) {
+      spawnerTypeaheadResetSkipFirst.current = false;
+      return;
+    }
+    setTypeaheadQuery("");
+  }, [spawnerPlaceInputResetSeq]);
 
   useEffect(() => {
     if (!typeaheadOpen) return;
@@ -127,14 +133,17 @@ export function SpawnersListPanel() {
       >
         <button
           type="button"
-          className="min-w-0 flex-1 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2 text-left"
           onClick={() => openSpawnerMetaEditor(row, col)}
         >
-          <p className="text-[10px] font-medium text-gray-200">
-            ({row}, {col})
-            {authored ? ` · ${authored}` : ""}
-          </p>
-          <p className="truncate text-[9px] text-violet-200/90">{spawnLabel(id)}</p>
+          <EditorSpawnSpriteIcon spawnTileId={id} className="mt-0.5 shrink-0" zoom={2} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-gray-200">
+              ({row}, {col})
+              {authored ? ` · ${authored}` : ""}
+            </p>
+            <p className="truncate text-[9px] text-violet-200/90">{spawnLabel(id)}</p>
+          </div>
         </button>
         <div className="flex shrink-0 gap-1">
           <Button
@@ -168,153 +177,141 @@ export function SpawnersListPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <div>
-        <p className={`${sectionLabel} mb-1`}>Map interaction</p>
-        <div
-          className="grid min-w-0 grid-cols-2 gap-0.5 rounded border border-gray-600 bg-gray-950/60 p-0.5"
-          role="radiogroup"
-          aria-label="Spawner map mode"
-        >
-          <Button
-            type="button"
-            size="sm"
-            role="radio"
-            aria-checked={spawnerSidebarMode === "select"}
-            onClick={() => setSpawnerSidebarMode("select")}
-            className={`${modeBtn} ${
-              spawnerSidebarMode === "select"
-                ? "bg-slate-600 text-white hover:bg-slate-500"
-                : "bg-transparent text-gray-400 hover:bg-gray-800/80 hover:text-gray-200"
+      <div className="space-y-1">
+        <p className={`${sectionLabel}`}>Spawner type</p>
+        <div ref={comboRef} className="relative">
+          <Input
+            type="text"
+            autoComplete="off"
+            placeholder="Search type…"
+            value={typeaheadQuery}
+            onChange={(e) => {
+              const v = e.target.value;
+              setTypeaheadQuery(v);
+              setTypeaheadOpen(true);
+              const trimmed = v.trim();
+              if (!trimmed) {
+                setSpawnerPlaceTileId(null);
+                return;
+              }
+              const match = SPAWNER_META_CONFIGURABLE_ENTRIES.find(
+                (x) => x.label.toLowerCase() === trimmed.toLowerCase(),
+              );
+              setSpawnerPlaceTileId(match?.id ?? null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                clearSpawnerPlacePick();
+                setTypeaheadOpen(false);
+              }
+            }}
+            onFocus={() => setTypeaheadOpen(true)}
+            className={`h-8 rounded-none border-gray-600 bg-gray-950/80 text-[11px] text-gray-100 placeholder:text-gray-500 ${
+              showSpawnerTypeClear ? "pr-8" : ""
             }`}
-          >
-            Select
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            role="radio"
-            aria-checked={spawnerSidebarMode === "place"}
-            onClick={() => setSpawnerSidebarMode("place")}
-            className={`${modeBtn} ${
-              spawnerSidebarMode === "place"
-                ? "bg-slate-600 text-white hover:bg-slate-500"
-                : "bg-transparent text-gray-400 hover:bg-gray-800/80 hover:text-gray-200"
-            }`}
-          >
-            Place
-          </Button>
+          />
+          {showSpawnerTypeClear ? (
+            <button
+              type="button"
+              aria-label="Clear spawner type"
+              className="absolute right-0.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-gray-500 hover:bg-gray-800 hover:text-gray-200"
+              onMouseDown={(ev) => ev.preventDefault()}
+              onClick={() => {
+                clearSpawnerPlacePick();
+                setTypeaheadOpen(false);
+              }}
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+          ) : null}
+          {typeaheadOpen ? (
+            <ul
+              className="absolute left-0 right-0 top-full z-50 mt-0.5 max-h-80 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl"
+              role="listbox"
+            >
+              {!typeaheadHasResults ? (
+                <li className="px-2 py-1.5 text-[10px] text-gray-500">No matches</li>
+              ) : (
+                <>
+                  {playerPlaceOptions.map((e) => (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        role="option"
+                        className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-gray-800"
+                        onMouseDown={(ev) => ev.preventDefault()}
+                        onClick={() => {
+                          setSpawnerPlaceTileId(e.id);
+                          setTypeaheadQuery(e.label);
+                          setTypeaheadOpen(false);
+                        }}
+                      >
+                        <EditorSpawnSpriteIcon spawnTileId={e.id} zoom={2} />
+                        <span className="min-w-0">{e.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                  {groupedPlaceTypes.map((group) => (
+                    <Fragment key={group.id}>
+                      <li
+                        role="presentation"
+                        className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900 px-2 py-1 text-[9px] font-medium uppercase tracking-wide text-gray-500"
+                      >
+                        {group.label}
+                      </li>
+                      {group.entries.map((e) => (
+                        <li key={e.id}>
+                          <button
+                            type="button"
+                            role="option"
+                            className="flex w-full items-center gap-2 px-2 py-1.5 pl-3 text-left text-[11px] text-gray-200 hover:bg-gray-800"
+                            onMouseDown={(ev) => ev.preventDefault()}
+                            onClick={() => {
+                              setSpawnerPlaceTileId(e.id);
+                              setTypeaheadQuery(e.label);
+                              setTypeaheadOpen(false);
+                            }}
+                          >
+                            <EditorSpawnSpriteIcon spawnTileId={e.id} zoom={2} />
+                            <span className="min-w-0">{e.label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </Fragment>
+                  ))}
+                </>
+              )}
+            </ul>
+          ) : null}
+        </div>
+        <div className="flex items-start gap-2 text-[10px] text-gray-500">
+          {spawnerPlaceTileId != null && spawnerPlaceTileId > 0 ? (
+            <>
+              <EditorSpawnSpriteIcon spawnTileId={spawnerPlaceTileId} zoom={2} className="shrink-0" />
+              <p>
+                Click an <span className="text-gray-300">empty</span> map cell to place. Esc or{" "}
+                <span className="text-gray-400">×</span> clears the type. Occupied cells still open
+                the editor.
+              </p>
+            </>
+          ) : (
+            <p>Choose a spawner type above to paint, or click the map / list to edit an existing one.</p>
+          )}
         </div>
       </div>
 
-      {spawnerSidebarMode === "place" ? (
-        <div className="space-y-1">
-          <p className={`${sectionLabel}`}>Spawner type</p>
-          <div ref={comboRef} className="relative">
-            <Input
-              type="text"
-              autoComplete="off"
-              placeholder="Search type…"
-              value={typeaheadQuery}
-              onChange={(e) => {
-                const v = e.target.value;
-                setTypeaheadQuery(v);
-                setTypeaheadOpen(true);
-                const trimmed = v.trim();
-                if (!trimmed) {
-                  setSpawnerPlaceTileId(null);
-                  return;
-                }
-                const match = SPAWNER_META_CONFIGURABLE_ENTRIES.find(
-                  (x) => x.label.toLowerCase() === trimmed.toLowerCase(),
-                );
-                setSpawnerPlaceTileId(match?.id ?? null);
-              }}
-              onFocus={() => setTypeaheadOpen(true)}
-              className="h-8 rounded-none border-gray-600 bg-gray-950/80 text-[11px] text-gray-100 placeholder:text-gray-500"
-            />
-            {typeaheadOpen ? (
-              <ul
-                className="absolute left-0 right-0 top-full z-50 mt-0.5 max-h-80 overflow-y-auto rounded border border-gray-600 bg-gray-900 py-0.5 shadow-xl"
-                role="listbox"
-              >
-                {!typeaheadHasResults ? (
-                  <li className="px-2 py-1.5 text-[10px] text-gray-500">No matches</li>
-                ) : (
-                  <>
-                    {playerPlaceOptions.map((e) => (
-                      <li key={e.id}>
-                        <button
-                          type="button"
-                          role="option"
-                          className="w-full px-2 py-1.5 text-left text-[11px] text-gray-200 hover:bg-gray-800"
-                          onMouseDown={(ev) => ev.preventDefault()}
-                          onClick={() => {
-                            setSpawnerPlaceTileId(e.id);
-                            setTypeaheadQuery(e.label);
-                            setTypeaheadOpen(false);
-                          }}
-                        >
-                          {e.label}
-                        </button>
-                      </li>
-                    ))}
-                    {groupedPlaceTypes.map((group) => (
-                      <Fragment key={group.id}>
-                        <li
-                          role="presentation"
-                          className="sticky top-0 z-10 border-b border-gray-800 bg-gray-900 px-2 py-1 text-[9px] font-medium uppercase tracking-wide text-gray-500"
-                        >
-                          {group.label}
-                        </li>
-                        {group.entries.map((e) => (
-                          <li key={e.id}>
-                            <button
-                              type="button"
-                              role="option"
-                              className="w-full px-2 py-1.5 pl-3 text-left text-[11px] text-gray-200 hover:bg-gray-800"
-                              onMouseDown={(ev) => ev.preventDefault()}
-                              onClick={() => {
-                                setSpawnerPlaceTileId(e.id);
-                                setTypeaheadQuery(e.label);
-                                setTypeaheadOpen(false);
-                              }}
-                            >
-                              {e.label}
-                            </button>
-                          </li>
-                        ))}
-                      </Fragment>
-                    ))}
-                  </>
-                )}
-              </ul>
-            ) : null}
-          </div>
-          <p className="text-[10px] text-gray-500">
-            {spawnerPlaceTileId != null && spawnerPlaceTileId > 0 ? (
-              <>
-                Click an <span className="text-gray-300">empty</span> map cell to place. Esc clears
-                the type. Occupied cells still open the editor in this mode.
-              </>
-            ) : (
-              <>Choose a spawner type above, then click the map.</>
-            )}
-          </p>
-        </div>
-      ) : null}
-
       {entries.length === 0 ? (
         <p className="text-[10px] text-gray-500">
-          No spawners on the map yet. Use <span className="text-gray-300">Place</span> above,
-          or right-click the map → <span className="text-violet-300">Add spawner</span>. Dialogue
-          NPCs are under NPCs.
+          No spawners on the map yet. Pick a type above and click an empty cell, or right-click the
+          map → <span className="text-violet-300">Add spawner</span>. Dialogue NPCs are under NPCs.
         </p>
       ) : (
         <>
           <p className="text-[10px] text-gray-500">
             {entries.length} spawner{entries.length === 1 ? "" : "s"} ({inView.length} in view) —
-            In <span className="text-gray-400">Select</span>, click a row or a spawner on the map to
-            edit. <span className="text-gray-400">Go</span> moves the camera.
+            Click a row or a spawner on the map to edit. <span className="text-gray-400">Go</span>{" "}
+            moves the camera.
           </p>
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
             <div>

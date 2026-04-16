@@ -13,6 +13,8 @@ export interface ResourceAssetConfig {
 export interface ResourceConfig extends BehaviorConfigs {
   id: string;
   assets: ResourceAssetConfig;
+  /** If true, may be assigned to consumable hotbar slots (see consumable-loadout). */
+  quickSlotConsumable?: boolean;
 }
 
 class ResourceRegistry {

@@ -2,6 +2,7 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
@@ -9,7 +10,15 @@ import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map
 export type Layer = "ground" | "collidables" | "spawns" | "decals";
 
 /** Right sidebar primary section (editor overlay). */
-export type EditorSidebarSection = "tiles" | "npcs" | "spawners" | "merchants" | "quests";
+export type EditorSidebarSection =
+  | "cursor"
+  | "tiles"
+  | "markers"
+  | "npcs"
+  | "spawners"
+  | "merchants"
+  | "scavenge"
+  | "quests";
 
 /** Snapshot of all layers (undo / API). */
 export interface MapLayerSnapshot {
@@ -20,6 +29,8 @@ export interface MapLayerSnapshot {
   dialogueNpcs: WorldMapDialogueNpcEntry[];
   /** Added for message decals; absent in snapshots taken before this feature. */
   messageDecals?: WorldMapMessageDecalEntry[];
+  /** Added for scavenge decal piles; absent in older snapshots. */
+  scavengeDecals?: WorldMapScavengeDecalEntry[];
   /** Added for per-tile merchant stock; absent in older snapshots. */
   merchantMeta?: WorldMapMerchantEntry[];
   quests: WorldMapQuestDefinition[];

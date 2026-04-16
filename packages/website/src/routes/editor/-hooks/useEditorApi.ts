@@ -5,6 +5,7 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
@@ -17,6 +18,7 @@ interface WorldMapDataResponse {
   decals: number[][];
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
   messageDecals?: WorldMapMessageDecalEntry[];
+  scavengeDecals?: WorldMapScavengeDecalEntry[];
   quests?: WorldMapQuestDefinition[];
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
   merchantMeta?: WorldMapMerchantEntry[];
@@ -115,6 +117,7 @@ export function useSaveWorldMap() {
       decals,
       dialogueNpcs,
       messageDecals,
+      scavengeDecals,
       quests,
       spawnerMeta,
       merchantMeta,
@@ -125,6 +128,7 @@ export function useSaveWorldMap() {
       decals: number[][];
       dialogueNpcs: WorldMapDialogueNpcEntry[];
       messageDecals: WorldMapMessageDecalEntry[];
+      scavengeDecals: WorldMapScavengeDecalEntry[];
       quests: WorldMapQuestDefinition[];
       spawnerMeta: WorldMapSpawnerMetaEntry[];
       merchantMeta: WorldMapMerchantEntry[];
@@ -141,6 +145,7 @@ export function useSaveWorldMap() {
           decals,
           dialogueNpcs,
           messageDecals,
+          scavengeDecals,
           quests,
           spawnerMeta,
           merchantMeta,

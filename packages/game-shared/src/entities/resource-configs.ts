@@ -183,6 +183,7 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
   },
   clean_water: {
     id: "clean_water",
+    quickSlotConsumable: true,
     assets: {
       assetKey: "clean_water",
       x: 144,
@@ -323,6 +324,53 @@ export const RESOURCE_CONFIGS: Record<string, ResourceConfig> = {
       enabled: false,
       buyable: false,
       price: 0,
+    },
+  },
+  zombie_skin: {
+    id: "zombie_skin",
+    interactableDisplayName: "zombie skin",
+    assets: {
+      assetKey: "zombie_skin",
+      x: 0,
+      y: 240,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+  },
+  leather: {
+    id: "leather",
+    interactableDisplayName: "leather",
+    assets: {
+      assetKey: "leather",
+      x: 96,
+      y: 160,
+      sheet: "items",
+    },
+    spawn: {
+      enabled: false,
+      chance: 0,
+    },
+    merchant: {
+      enabled: false,
+      buyable: false,
+      price: 0,
+    },
+    recipe: {
+      enabled: true,
+      components: [{ type: "zombie_skin", count: 2 }],
+      resultCount: 1,
+      profession: "tailoring",
+      unlockLevel: 1,
+      station: "workbench",
+      professionXp: 6,
     },
   },
 };

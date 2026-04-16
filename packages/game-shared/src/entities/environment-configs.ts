@@ -175,4 +175,14 @@ export const ENVIRONMENT_CONFIGS: Record<string, EnvironmentConfig> = {
       sheet: "ground",
     },
   },
+  scavenge_decal: {
+    id: "scavenge_decal",
+    category: "obstacle",
+    assets: {
+      assetKey: "scavenge_decal",
+      x: 16,
+      y: 0,
+      sheet: "ground",
+    },
+  },
 };

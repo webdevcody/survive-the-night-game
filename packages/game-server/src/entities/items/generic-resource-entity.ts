@@ -26,7 +26,8 @@ export class GenericResourceEntity extends Entity {
     this.addExtension(new Positionable(this).setSize(size));
 
     // Resources are interactive but not carryable - they're picked up directly
-    const displayName = config.id.replace(/_/g, " "); // Convert "pistol_ammo" to "pistol ammo"
+    const displayName =
+      config.interactableDisplayName ?? config.id.replace(/_/g, " ");
     this.addExtension(
       new Interactive(this)
         .onInteract(this.interact.bind(this))

@@ -25,6 +25,7 @@ import { WallLevel3Client } from "@/entities/items/wall-level-3";
 import { BandageClient } from "@/entities/items/bandage";
 import { PainPillsClient } from "@/entities/items/pain-pills";
 import { EnergyDrinkClient } from "@/entities/items/energy-drink";
+import { CleanWaterClient } from "@/entities/items/clean-water";
 import { ClothClient } from "@/entities/items/cloth";
 import { WoodClient } from "@/entities/items/wood";
 import { CoinClient } from "@/entities/items/coin";
@@ -74,6 +75,7 @@ import { LockerClient } from "./environment/locker";
 import { AuctionHouseClient } from "./environment/auction-house";
 import { LightDecalClient } from "@/entities/environment/light-decal";
 import { MessageDecalClient } from "@/entities/environment/message-decal";
+import { ScavengeDecalClient } from "@/entities/environment/scavenge-decal";
 import { MerchantClient } from "./environment/merchant";
 import { CarClient } from "./environment/car";
 import { SurvivorClient } from "./environment/survivor";
@@ -116,6 +118,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   bandage: BandageClient,
   pain_pills: PainPillsClient,
   energy_drink: EnergyDrinkClient,
+  clean_water: CleanWaterClient,
   cloth: ClothClient,
   wood: WoodClient,
   coin: CoinClient,
@@ -163,6 +166,7 @@ const CLIENT_ENTITY_CONSTRUCTORS: Record<EntityType, ClientEntityConstructor> = 
   locker: LockerClient,
   light_decal: LightDecalClient,
   message_decal: MessageDecalClient,
+  scavenge_decal: ScavengeDecalClient,
   merchant: MerchantClient,
   car: CarClient,
   survivor: SurvivorClient,

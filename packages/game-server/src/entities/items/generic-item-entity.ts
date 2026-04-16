@@ -28,7 +28,8 @@ export class GenericItemEntity extends Entity {
 
     // Most items are interactive and carryable
     if (config.category !== "structure") {
-      const displayName = config.id.replace(/_/g, " "); // Convert "pistol_ammo" to "pistol ammo"
+      const displayName =
+        config.interactableDisplayName ?? config.id.replace(/_/g, " ");
       this.addExtension(
         new Interactive(this).onInteract(this.interact.bind(this)).setDisplayName(displayName)
       );

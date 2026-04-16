@@ -161,6 +161,7 @@ export function ComboboxTypeahead({
           zIndex: 10002,
           pointerEvents: "auto",
         }}
+        onMouseDown={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -180,6 +181,7 @@ export function ComboboxTypeahead({
                 onPointerDown={(ev) => {
                   if (ev.button !== 0) return;
                   ev.preventDefault();
+                  ev.stopPropagation();
                   pick(o.value);
                 }}
               >

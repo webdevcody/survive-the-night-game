@@ -33,5 +33,6 @@ describe("itemMatchesConsumableLoadout", () => {
     expect(itemMatchesConsumableLoadout("bandage")).toBe(true);
     expect(itemMatchesConsumableLoadout("pain_pills")).toBe(true);
     expect(itemMatchesConsumableLoadout("energy_drink")).toBe(true);
+    expect(itemMatchesConsumableLoadout("clean_water")).toBe(true);
   });
 });

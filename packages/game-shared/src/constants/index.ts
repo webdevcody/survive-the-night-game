@@ -35,6 +35,7 @@ export const NON_SPAWNABLE = new Set<EntityType>([
   "campsite_fire",
   "light_decal",
   "message_decal",
+  "scavenge_decal",
   "crate",
 ]);
 

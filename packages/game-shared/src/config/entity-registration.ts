@@ -117,5 +117,7 @@ export const ENTITY_REGISTRATION_CONFIG: EntityRegistrationEntry[] = [
   { type: "dialogue_survivor_npc", category: "environment" },
   { type: "auction_house", category: "environment" },
   { type: "sign", category: "items" },
+  { type: "clean_water", category: "items" },
+  { type: "scavenge_decal", category: "environment" },
 ];
 

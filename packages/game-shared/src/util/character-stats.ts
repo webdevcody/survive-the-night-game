@@ -33,6 +33,8 @@ export const CHARACTER_STAT_MODIFIERS = {
   evadeMaxChance: 0.65,
   /** Evade chance per point (before cap): evadeChance = min(cap, points * this) */
   evadeChancePerPoint: 0.007,
+  /** Flat evade chance added per equipped armor piece (category armor), before global cap with stat evade */
+  armorEvadeChancePerEquippedPiece: 0.004,
   /** Spread angle multiplier per point (lower = more accurate): spread *= max(0.2, 1 - accuracy * this) */
   accuracySpreadReductionPerPoint: 0.06,
   /** Reload duration multiplier per point: reload time *= max(0.5, 1 - reloadSpeed * this) */
@@ -97,12 +99,48 @@ export function computeMaxPlayerHealth(baseMax: number, healthPoints: number): n
   return baseMax + p * CHARACTER_STAT_MODIFIERS.healthPerPoint;
 }
 
-export function computeEvadeChance(evadePoints: number): number {
+/** Stat-only evade from allocated points, no cap (use for combining with armor). */
+export function computeRawStatEvadeChance(evadePoints: number): number {
   const p = Math.max(0, Math.floor(evadePoints));
-  return Math.min(
-    CHARACTER_STAT_MODIFIERS.evadeMaxChance,
-    p * CHARACTER_STAT_MODIFIERS.evadeChancePerPoint,
+  return p * CHARACTER_STAT_MODIFIERS.evadeChancePerPoint;
+}
+
+/** Stat-only evade chance display / legacy roll when armor is not involved. */
+export function computeStatEvadeChanceDisplay(evadePoints: number): number {
+  return Math.min(CHARACTER_STAT_MODIFIERS.evadeMaxChance, computeRawStatEvadeChance(evadePoints));
+}
+
+/** Stat-only; same as computeStatEvadeChanceDisplay (armor ignored). */
+export function computeEvadeChance(evadePoints: number): number {
+  return computeStatEvadeChanceDisplay(evadePoints);
+}
+
+export function countEquippedArmorPieces(equipment: PlayerEquipmentState): number {
+  let n = 0;
+  for (const key of EQUIPMENT_SLOT_KEYS) {
+    const slot = equipment[key];
+    if (!slot) continue;
+    if (itemRegistry.get(slot.itemType)?.category === "armor") {
+      n += 1;
+    }
+  }
+  return n;
+}
+
+export function computeArmorEvadeBonusFromEquipment(equipment: PlayerEquipmentState): number {
+  return (
+    countEquippedArmorPieces(equipment) * CHARACTER_STAT_MODIFIERS.armorEvadeChancePerEquippedPiece
   );
+}
+
+/** Zombie-hit evade chance: stat (uncapped linear) + armor flat bonuses, then global cap. */
+export function computeTotalEvadeChance(
+  evadePoints: number,
+  equipment: PlayerEquipmentState,
+): number {
+  const rawStat = computeRawStatEvadeChance(evadePoints);
+  const armor = computeArmorEvadeBonusFromEquipment(equipment);
+  return Math.min(CHARACTER_STAT_MODIFIERS.evadeMaxChance, rawStat + armor);
 }
 
 export function computeMaxStamina(baseMax: number, staminaStatPoints: number): number {

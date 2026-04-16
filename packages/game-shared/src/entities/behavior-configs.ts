@@ -59,4 +59,9 @@ export interface BehaviorConfigs {
   recipe?: RecipeConfig;
   /** Respawn delay for authored map item fixtures (spawns layer); overrides default when set. */
   fixtureRespawnMs?: number;
+  /**
+   * World pickup label for generic item/resource entities; must match a value in
+   * `InteractableTexts` (wire encoding). If omitted, derived from id with underscores to spaces.
+   */
+  interactableDisplayName?: string;
 }

@@ -8,6 +8,7 @@ import { ImageLoader } from "@/managers/asset";
 import {
   ClientInteractive,
   ClientPlaceable,
+  ClientHoldInteract,
   ClientPositionable,
   ClientCarryable,
   ClientInventory,
@@ -97,6 +98,10 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
 
     const formattedDisplayName = formatDisplayName(displayName);
     const isPlaceable = this.hasExt(ClientPlaceable);
+    const holdInteractMs = this.hasExt(ClientHoldInteract)
+      ? this.getExt(ClientHoldInteract).getHoldDurationMs()
+      : 0;
+    const needsHold = isPlaceable || holdInteractMs > 0;
 
     // Add item count to display name if available
     let text = formattedDisplayName;
@@ -110,7 +115,7 @@ export abstract class ClientEntity extends ClientEntityBase implements Renderabl
     }
 
     let interactMessage = "";
-    if (isPlaceable) {
+    if (needsHold) {
       interactMessage += "hold ";
     }
     interactMessage += `${getConfig().keybindings.INTERACT}`;

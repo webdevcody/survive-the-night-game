@@ -2,8 +2,6 @@ import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import type { Layer } from "../-types";
 import { getConfig } from "@survive-the-night/game-shared/config";
-import { DECAL_PALETTE_ENTRIES } from "@survive-the-night/game-shared/map/decal-palette";
-import { MessageDecalsListPanel } from "./MessageDecalsListPanel";
 
 interface TilePaletteProps {
   onTileSelect: (row: number, col: number, layer: Layer) => void;
@@ -229,18 +227,6 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
         >
           <LayerTabDot layer="collidables" />
           Collidables
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => switchLayer("decals")}
-          className={`${tabBtn} ${
-            activeLayer === "decals"
-              ? "bg-slate-600 hover:bg-slate-500"
-              : "bg-gray-800 hover:bg-gray-700/90"
-          } text-white border-0`}
-        >
-          <LayerTabDot layer="decals" />
-          Decals
         </Button>
       </div>
 
@@ -519,47 +505,6 @@ export function TilePalette({ onTileSelect }: TilePaletteProps) {
         </div>
       )}
 
-      {activeLayer === "decals" && (
-        <div className="border border-gray-500 bg-gray-800 py-2 px-2">
-          <p className="mb-2 text-[10px] leading-tight text-gray-400">
-            Overlays on the ground layer (saved in world-map{" "}
-            <code className="text-gray-300">decals</code>). Each Campsite decal spawns a campfire
-            entity in-game. Light places invisible torch-equivalent illumination
-            only (no sprite). <span className="text-sky-200">Message</span> spawns a small sign
-            players can read in-game (text below). Player, zombies, and item markers live on the
-            spawns layer — use right‑click on the map or the NPCs / Spawners sidebar tabs. Select a
-            placed decal (click with that decal active on the palette) and press Delete or Backspace to
-            remove it.
-          </p>
-          <div className="flex flex-wrap gap-1">
-            {DECAL_PALETTE_ENTRIES.map((entry) => {
-              const isSelected = selectedTileId === entry.id && activeLayer === "decals";
-              return (
-                <Button
-                  key={entry.id}
-                  size="sm"
-                  onClick={() => {
-                    setSelectedTileId(entry.id);
-                    setActiveLayer("decals");
-                  }}
-                  className={`!rounded-none text-xs h-8 min-w-[4.5rem] px-2 border text-white ${
-                    isSelected
-                      ? "border-white ring-1 ring-white"
-                      : "border-gray-600"
-                  }`}
-                  style={{
-                    backgroundColor: entry.id === 0 ? "rgb(55 65 81)" : entry.color,
-                  }}
-                  title={entry.label}
-                >
-                  {entry.label}
-                </Button>
-              );
-            })}
-          </div>
-          <MessageDecalsListPanel />
-        </div>
-      )}
     </div>
   );
 }

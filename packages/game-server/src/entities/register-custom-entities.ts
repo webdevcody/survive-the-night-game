@@ -27,6 +27,7 @@ import { WallLevel3 } from "@/entities/items/wall-level-3";
 import { Bandage } from "@/entities/items/bandage";
 import { PainPills } from "@/entities/items/pain-pills";
 import { EnergyDrink } from "@/entities/items/energy-drink";
+import { CleanWater } from "@/entities/items/clean-water";
 import { Cloth } from "@/entities/items/cloth";
 import { Wood } from "@/entities/items/wood";
 import { Coin } from "@/entities/items/coin";
@@ -72,6 +73,7 @@ import { Locker } from "@/entities/environment/locker";
 import { AuctionHouse } from "@/entities/environment/auction-house";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
+import { ScavengeDecal } from "@/entities/environment/scavenge-decal";
 import { Merchant } from "@/entities/environment/merchant";
 import { Car } from "@/entities/environment/car";
 import { Survivor } from "@/entities/environment/survivor";
@@ -114,6 +116,7 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   bandage: Bandage,
   pain_pills: PainPills,
   energy_drink: EnergyDrink,
+  clean_water: CleanWater,
   cloth: Cloth,
   wood: Wood,
   coin: Coin,
@@ -158,6 +161,7 @@ const SERVER_ENTITY_CONSTRUCTORS: Record<EntityType, EntityConstructor> = {
   locker: Locker,
   light_decal: LightDecal,
   message_decal: MessageDecal,
+  scavenge_decal: ScavengeDecal,
   merchant: Merchant,
   car: Car,
   survivor: Survivor,

@@ -11,6 +11,7 @@ export const ParticleTypes = {
   SMOKE: "smoke",
   RAIN: "rain",
   CONFETTI: "confetti",
+  MISS_TEXT: "miss_text",
 } as const;
 
 export type ParticleType = (typeof ParticleTypes)[keyof typeof ParticleTypes];

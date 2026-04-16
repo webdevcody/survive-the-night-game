@@ -19,6 +19,8 @@ export const DECAL_TILE_LOCKER = 7;
 export const DECAL_TILE_SHOPKEEPER = 8;
 /** Global auction house interactable (uses locker art on client). */
 export const DECAL_TILE_AUCTION_HOUSE = 9;
+/** Hold-to-loot pile; config in world-map `scavengeDecals`. */
+export const DECAL_TILE_SCAVENGE = 10;
 
 export interface DecalPaletteEntry {
   id: number;
@@ -38,6 +40,7 @@ export const DECAL_PALETTE_ENTRIES: readonly DecalPaletteEntry[] = [
   { id: DECAL_TILE_LOCKER, label: "Locker", color: "rgba(148, 163, 184, 0.5)" },
   { id: DECAL_TILE_SHOPKEEPER, label: "Shopkeeper", color: "rgba(196, 181, 253, 0.5)" },
   { id: DECAL_TILE_AUCTION_HOUSE, label: "Auction", color: "rgba(250, 204, 21, 0.45)" },
+  { id: DECAL_TILE_SCAVENGE, label: "Scavenge", color: "rgba(163, 230, 53, 0.4)" },
 ] as const;
 
 /** Short text drawn inside each decal cell in the map editor (message tiles use line preview instead). */
@@ -52,6 +55,7 @@ const DECAL_TILE_SHORT: Record<number, string> = {
   [DECAL_TILE_LOCKER]: "BNK",
   [DECAL_TILE_SHOPKEEPER]: "SHOP",
   [DECAL_TILE_AUCTION_HOUSE]: "AH",
+  [DECAL_TILE_SCAVENGE]: "SCAV",
 };
 
 /**

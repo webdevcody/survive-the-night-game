@@ -1,5 +1,6 @@
 import { PlayerDroppedItemEvent } from "../../../../game-shared/src/events/server-sent/events/player-dropped-item-event";
 import { PlayerHurtEvent } from "../../../../game-shared/src/events/server-sent/events/player-hurt-event";
+import { PlayerEvadedEvent } from "../../../../game-shared/src/events/server-sent/events/player-evaded-event";
 import Collidable from "@/extensions/collidable";
 import Consumable from "@/extensions/consumable";
 import Destructible from "@/extensions/destructible";
@@ -62,7 +63,7 @@ import {
   computeMaxInventorySlots,
   computeMaxPlayerHealth,
   computeMaxStamina,
-  computeEvadeChance,
+  computeTotalEvadeChance,
   computePassiveHpRegenIntervalSeconds,
   computeStaminaRegenMultiplier,
 } from "@shared/util/character-stats";
@@ -373,7 +374,10 @@ export class Player extends Entity {
             if (attacker && getZombieTypesSet().has(attacker.getType() as any)) {
               zombieMeleeAttacker = attacker as Entity;
               const ev = this.serialized.get("statEvade") ?? 0;
-              if (Math.random() < computeEvadeChance(ev)) {
+              const equipment = this.getExt(Inventory).getEquipment();
+              const totalEvade = computeTotalEvadeChance(ev, equipment);
+              if (Math.random() < totalEvade) {
+                this.broadcaster.broadcastEvent(new PlayerEvadedEvent(this.getId()));
                 return 0;
               }
             }
@@ -392,8 +396,8 @@ export class Player extends Entity {
           }
           return adjustedDamage;
         })
-        .onDamaged(() => {
-          // Broadcast PlayerHurtEvent when player takes damage (e.g., from zombie attacks)
+        .onDamaged((_attackerId, applied) => {
+          if ((applied ?? 0) <= 0) return;
           this.broadcaster.broadcastEvent(new PlayerHurtEvent(this.getId()));
         })
         .onDeath(() => this.onDeath()),
@@ -1887,6 +1891,14 @@ export class Player extends Entity {
 
   getDisplayName(): string {
     return this.serialized.get("displayName");
+  }
+
+  /** Refill stamina to max and clear exhaustion (e.g. clean water). */
+  restoreStaminaFully(): void {
+    this.exhaustionTimer = 0;
+    const max = this.serialized.get("maxStamina");
+    this.serialized.set("stamina", max);
+    this.serialized.set("maxStamina", max);
   }
 
   handleStamina(deltaTime: number) {

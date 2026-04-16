@@ -9,6 +9,7 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
@@ -18,6 +19,7 @@ import {
   parseDialogueNpcEditorMetadataFromQuestsSidecar,
   reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
+  reconcileScavengeDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
 } from "@survive-the-night/game-shared/map/world-map-types";
@@ -93,6 +95,7 @@ export interface WorldMapData {
   decals: number[][];
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
   messageDecals?: WorldMapMessageDecalEntry[];
+  scavengeDecals?: WorldMapScavengeDecalEntry[];
   quests?: WorldMapQuestDefinition[];
   /** Optional labels for non-dialogue spawner tiles (editor + future runtime use). */
   spawnerMeta?: WorldMapSpawnerMetaEntry[];
@@ -156,6 +159,7 @@ export function createEmptyWorldMap(): WorldMapData {
     decals: createEmptyDecalsLayer(n),
     dialogueNpcs: [],
     messageDecals: [],
+    scavengeDecals: [],
     quests: [],
     spawnerMeta: [],
     merchantMeta: [],
@@ -230,6 +234,11 @@ export async function readWorldMap(): Promise<WorldMapData> {
       dataWithSidecars.messageDecals,
       n,
     );
+    const scavengeDecals = reconcileScavengeDecalsWithDecalsLayer(
+      decals,
+      dataWithSidecars.scavengeDecals,
+      n,
+    );
     const quests = normalizeQuests(dataWithSidecars.quests, n);
     const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
     const merchantMeta = reconcileMerchantMetaWithMerchantTiles(
@@ -245,6 +254,7 @@ export async function readWorldMap(): Promise<WorldMapData> {
       decals,
       dialogueNpcs,
       messageDecals,
+      scavengeDecals,
       quests,
       spawnerMeta,
       merchantMeta,
@@ -393,6 +403,11 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
     dataWithSidecars.messageDecals,
     oldN,
   );
+  const scavengeDecals = reconcileScavengeDecalsWithDecalsLayer(
+    decals,
+    dataWithSidecars.scavengeDecals,
+    oldN,
+  );
   const quests = normalizeQuests(dataWithSidecars.quests, oldN);
   const spawnerMeta = reconcileSpawnerMetaWithSpawnsLayer(spawns, dataWithSidecars.spawnerMeta);
   const merchantMeta = reconcileMerchantMetaWithMerchantTiles(
@@ -408,6 +423,7 @@ async function readWorldMapRawFromDisk(): Promise<WorldMapData> {
     decals,
     dialogueNpcs,
     messageDecals,
+    scavengeDecals,
     quests,
     spawnerMeta,
     merchantMeta,
@@ -479,6 +495,11 @@ export async function expandWorldMap(mapSizeBiomes: number): Promise<ExpandWorld
     messageDecals: reconcileMessageDecalsWithDecalsLayer(
       resized.decals,
       raw.messageDecals ?? [],
+      newN,
+    ),
+    scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+      resized.decals,
+      raw.scavengeDecals ?? [],
       newN,
     ),
     quests: raw.quests ?? [],

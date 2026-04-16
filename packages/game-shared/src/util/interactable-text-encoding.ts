@@ -121,6 +121,15 @@ export const InteractableTexts = {
   PAPER: "paper",
   DIRTY_WATER: "dirty water",
   SKATEBOARD: "skateboard",
+  ZOMBIE_SKIN: "zombie skin",
+  LEATHER: "leather",
+  LEATHER_CAP: "leather cap",
+  LEATHER_JERKIN: "leather jerkin",
+  LEATHER_BRACERS: "leather bracers",
+  LEATHER_PANTS: "leather pants",
+  LEATHER_BOOTS: "leather boots",
+  LEATHER_BACKPACK: "leather backpack",
+  SCAVENGE: "scavenge",
 } as const;
 
 export type InteractableText = (typeof InteractableTexts)[keyof typeof InteractableTexts];

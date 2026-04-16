@@ -454,7 +454,13 @@ export function getScrapOutputsForItem(itemType: ItemType): {
     itemType === "stitched_pants" ||
     itemType === "survivor_boots" ||
     itemType === "forager_cloak" ||
-    itemType === "reinforced_duster"
+    itemType === "reinforced_duster" ||
+    itemType === "leather_cap" ||
+    itemType === "leather_jerkin" ||
+    itemType === "leather_bracers" ||
+    itemType === "leather_pants" ||
+    itemType === "leather_boots" ||
+    itemType === "leather_backpack"
   ) {
     return {
       components: [

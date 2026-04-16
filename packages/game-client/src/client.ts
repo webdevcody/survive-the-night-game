@@ -27,6 +27,7 @@ import {
   ClientPositionable,
   ClientInventory,
   ClientPlaceable,
+  ClientHoldInteract,
   ClientInteractive,
 } from "@/extensions";
 import { ParticleManager } from "./managers/particles";
@@ -519,7 +520,11 @@ export class GameClient {
 
     if (entityId !== null) {
       const entity = getEntityById(this.gameState, entityId);
-      if (entity && !entity.hasExt(ClientPlaceable) && this.socketManager) {
+      const requiresHold =
+        entity &&
+        (entity.hasExt(ClientPlaceable) ||
+          (entity.hasExt(ClientHoldInteract) && entity.getExt(ClientHoldInteract).getHoldDurationMs() > 0));
+      if (entity && !requiresHold && this.socketManager) {
         this.socketManager.sendInteract(entityId);
       }
     }

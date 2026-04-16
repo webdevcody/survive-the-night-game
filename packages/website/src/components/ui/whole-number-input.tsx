@@ -14,8 +14,8 @@ export type WholeNumberInputProps = Omit<
 };
 
 /**
- * Integer-only field with natural typing: empty string is allowed while focused
- * (native `type="number"` maps "" to 0 on each change). Clamps to min/max; commits on blur.
+ * Integer-only field with natural typing: digits (and temporary empty input) while focused.
+ * Min/max clamping and `onValueChange` run on blur only so backspace/edit mid-number works.
  */
 export function WholeNumberInput({
   value,
@@ -34,23 +34,7 @@ export function WholeNumberInput({
 
   const applyDigits = (raw: string) => {
     const digits = raw.replace(/\D/g, "");
-    if (digits === "") {
-      setDraft("");
-      return;
-    }
-    let n = Number(digits);
-    if (!Number.isFinite(n)) {
-      setDraft("");
-      return;
-    }
-    if (n > max) {
-      setDraft(String(max));
-      onValueChange(max);
-      return;
-    }
-    const clamped = Math.max(min, Math.min(max, Math.trunc(n)));
-    setDraft(String(clamped));
-    onValueChange(clamped);
+    setDraft(digits === "" ? "" : digits);
   };
 
   const commitDraft = () => {

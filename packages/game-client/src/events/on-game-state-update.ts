@@ -84,7 +84,8 @@ export const applyGameStateUpdateBuffer = (
         entity.getId() !== context.gameState.playerId &&
         entity.hasExt(ClientPositionable) &&
         entity.getType() !== "light_decal" &&
-        entity.getType() !== "message_decal"
+        entity.getType() !== "message_decal" &&
+        entity.getType() !== "scavenge_decal"
       ) {
         const pos = entity.getExt(ClientPositionable).getPosition();
         context.interpolation.addSnapshot(entity.getId(), pos, timestamp);
@@ -210,7 +211,8 @@ export const applyGameStateUpdateBuffer = (
           existingEntity.getId() !== context.gameState.playerId &&
           existingEntity.hasExt(ClientPositionable) &&
           existingEntity.getType() !== "light_decal" &&
-          existingEntity.getType() !== "message_decal"
+          existingEntity.getType() !== "message_decal" &&
+          existingEntity.getType() !== "scavenge_decal"
         ) {
           const rawPos = existingEntity.getExt(ClientPositionable).getPosition();
           context.interpolation.addSnapshot(existingEntity.getId(), rawPos, timestamp);
@@ -245,7 +247,8 @@ export const applyGameStateUpdateBuffer = (
           created.getId() !== context.gameState.playerId &&
           created.hasExt(ClientPositionable) &&
           created.getType() !== "light_decal" &&
-          created.getType() !== "message_decal"
+          created.getType() !== "message_decal" &&
+          created.getType() !== "scavenge_decal"
         ) {
           const pos = created.getExt(ClientPositionable).getPosition();
           context.interpolation.addSnapshot(created.getId(), pos, timestamp);

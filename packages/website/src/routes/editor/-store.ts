@@ -22,13 +22,16 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@survive-the-night/game-shared/map/world-map-types";
 import {
   normalizeDialogueNpcs,
   normalizeMessageDecals,
+  normalizeScavengeDecals,
   reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
+  reconcileScavengeDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   MERCHANT_META_ITEM_TYPE_MAX,
   MERCHANT_META_LABEL_MAX,
@@ -39,7 +42,11 @@ import {
 } from "@survive-the-night/game-shared/map/world-map-types";
 import type { QuestStep, WorldMapQuestDefinition } from "@survive-the-night/game-shared/map/quest-types";
 import { createQuestDefinitionDraft } from "@survive-the-night/game-shared/map/quest-types";
-import { DECAL_TILE_SHOPKEEPER } from "@survive-the-night/game-shared/map/decal-palette";
+import {
+  DECAL_TILE_MESSAGE,
+  DECAL_TILE_SCAVENGE,
+  DECAL_TILE_SHOPKEEPER,
+} from "@survive-the-night/game-shared/map/decal-palette";
 import { COLLIDABLE_TILE_MERCHANT } from "@survive-the-night/game-shared/map/collidable-tile-ids";
 import {
   DIALOGUE_NPC_MAX_MESSAGE_LENGTH,
@@ -249,6 +256,8 @@ interface EditorState {
   dialogueNpcs: WorldMapDialogueNpcEntry[];
   /** Message text for decals-layer `DECAL_TILE_MESSAGE` cells. */
   messageDecals: WorldMapMessageDecalEntry[];
+  /** Loot pile config for decals-layer `DECAL_TILE_SCAVENGE` cells. */
+  scavengeDecals: WorldMapScavengeDecalEntry[];
   /** Optional display names for non-dialogue spawner tiles. */
   spawnerMeta: WorldMapSpawnerMetaEntry[];
   /** Optional per-tile merchant stock overrides. */
@@ -270,6 +279,8 @@ interface EditorState {
   // Drag state
   isDragging: boolean;
   hasModifiedDuringDrag: boolean;
+  /** Markers tab: decal paint happened during a pointer-drag stroke; clear brush on pointer-up. */
+  markersDecalPaintedDuringPointerDrag: boolean;
 
   saveStatus: SaveStatus;
 
@@ -281,6 +292,10 @@ interface EditorState {
   spawnerConfigModal: { row: number; col: number } | null;
   /** Configure merchant stock for a shopkeeper / merchant collidable tile. */
   merchantConfigModal: { row: number; col: number } | null;
+  /** Configure scavenge decal timings / drop table for a decals-layer tile. */
+  scavengeConfigModal: { row: number; col: number } | null;
+  /** Configure message sign lines for a decals-layer message tile. */
+  messageConfigModal: { row: number; col: number } | null;
   /** When set, next map click (empty spawns cell) moves this non-dialogue spawner tile + label. */
   spawnerRelocateFrom: { row: number; col: number } | null;
   /** When set, next map click on a valid empty tile moves shopkeeper decal / merchant collidable + meta. */
@@ -289,12 +304,16 @@ interface EditorState {
   questWaypointPickTarget: { questId: string; stepIndex: number } | null;
   /** Right overlay: tiles palette vs lists vs quests. */
   sidebarSection: EditorSidebarSection;
-  /** Spawners tab: map click selects/opens editor vs places the chosen type. */
-  spawnerSidebarMode: "select" | "place";
-  /** Spawns-layer tile id to paint in place mode (`SPAWNER_META_CONFIGURABLE_ENTRIES`). */
+  /** Spawns-layer tile id to paint when spawners sidebar is active (`SPAWNER_META_CONFIGURABLE_ENTRIES`). */
   spawnerPlaceTileId: number | null;
+  /** Incremented when clearing the spawner typeahead from the map (Esc); sidebar resets local query. */
+  spawnerPlaceInputResetSeq: number;
   /** Merchants tab: next map click places a shopkeeper decal, then turns off. */
   merchantPlaceMode: boolean;
+  /** Scavenge tab: next map click places a scavenge decal, then turns off. */
+  scavengePlaceMode: boolean;
+  /** NPCs tab: next map click places a dialogue NPC on an empty spawns cell (or opens editor if already dialogue). */
+  dialogueNpcPlaceMode: boolean;
 
   // Palette selection (collidables)
   isPaletteSelectionMode: boolean;
@@ -351,6 +370,7 @@ interface EditorState {
   setDecalsGrid: (grid: number[][]) => void;
   setDialogueNpcs: (entries: WorldMapDialogueNpcEntry[]) => void;
   setMessageDecals: (entries: WorldMapMessageDecalEntry[]) => void;
+  setScavengeDecals: (entries: WorldMapScavengeDecalEntry[]) => void;
   setSpawnerMeta: (entries: WorldMapSpawnerMetaEntry[]) => void;
   setMerchantMeta: (entries: WorldMapMerchantEntry[]) => void;
   setQuests: (quests: WorldMapQuestDefinition[]) => void;
@@ -374,18 +394,33 @@ interface EditorState {
     patch: Partial<Pick<WorldMapMessageDecalEntry, "lines" | "message">>,
   ) => void;
   removeMessageDecalAt: (row: number, col: number) => void;
+  updateScavengeDecalEntry: (
+    row: number,
+    col: number,
+    patch: Partial<
+      Pick<
+        WorldMapScavengeDecalEntry,
+        "dropTable" | "dropCountMin" | "dropCountMax" | "searchDurationMs" | "respawnMs"
+      >
+    >,
+  ) => void;
+  removeScavengeDecalAt: (row: number, col: number) => void;
   setSelectedSpawnCell: (cell: { row: number; col: number } | null) => void;
   setActiveLayer: (layer: Layer) => void;
   setSelectedTileId: (id: number) => void;
   setExportText: (text: string) => void;
   setIsDragging: (dragging: boolean) => void;
   setHasModifiedDuringDrag: (modified: boolean) => void;
+  resetMarkersDecalDragPaintFlag: () => void;
+  finalizeMarkersBrushAfterDecalDrag: () => void;
   setSaveStatus: (status: SaveStatus) => void;
   setNpcConfigModal: (cell: { row: number; col: number } | null) => void;
   startDialogueNpcRelocate: (row: number, col: number) => void;
   cancelDialogueNpcRelocate: () => void;
   setSpawnerConfigModal: (cell: { row: number; col: number } | null) => void;
   setMerchantConfigModal: (cell: { row: number; col: number } | null) => void;
+  setScavengeConfigModal: (cell: { row: number; col: number } | null) => void;
+  setMessageConfigModal: (cell: { row: number; col: number } | null) => void;
   setMerchantShopLinesAt: (
     row: number,
     col: number,
@@ -395,6 +430,8 @@ interface EditorState {
   /** Editor-only label; trims and caps length. Removing label clears the meta row if no custom stock. */
   updateMerchantLabelAt: (row: number, col: number, rawLabel: string) => void;
   openMerchantMetaEditor: (row: number, col: number) => void;
+  openScavengeDecalEditor: (row: number, col: number) => void;
+  openMessageDecalEditor: (row: number, col: number) => void;
   startMerchantRelocate: (row: number, col: number) => void;
   cancelMerchantRelocate: () => void;
   startSpawnerRelocate: (row: number, col: number) => void;
@@ -417,13 +454,16 @@ interface EditorState {
   /** Clears shopkeeper decal and/or merchant collidable at this tile; drops custom stock meta. */
   removeMerchantAtTile: (row: number, col: number) => void;
   setMerchantPlaceMode: (enabled: boolean) => void;
+  setScavengePlaceMode: (enabled: boolean) => void;
+  setDialogueNpcPlaceMode: (enabled: boolean) => void;
   /** Select spawns layer and open NPC modal (no grid change). */
   openDialogueNpcEditor: (row: number, col: number) => void;
   /** Open spawner metadata modal and spawns sidebar (no grid change). */
   openSpawnerMetaEditor: (row: number, col: number) => void;
   setSidebarSection: (section: EditorSidebarSection) => void;
-  setSpawnerSidebarMode: (mode: "select" | "place") => void;
   setSpawnerPlaceTileId: (id: number | null) => void;
+  /** Clear chosen spawner paint type and reset the sidebar typeahead (e.g. Esc). */
+  clearSpawnerPlacePick: () => void;
   setIsPaletteSelectionMode: (mode: boolean) => void;
   setPaletteSelectionStart: (pos: Position | null) => void;
   setPaletteSelectionCurrent: (pos: Position | null) => void;
@@ -500,6 +540,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   decalsGrid: createEmptyDecalsLayer(initialSize),
   dialogueNpcs: [],
   messageDecals: [],
+  scavengeDecals: [],
   spawnerMeta: [],
   merchantMeta: [],
   quests: [],
@@ -511,18 +552,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   exportText: "",
   isDragging: false,
   hasModifiedDuringDrag: false,
+  markersDecalPaintedDuringPointerDrag: false,
   saveStatus: "idle",
   npcConfigModal: null,
   dialogueNpcRelocateFrom: null,
   spawnerConfigModal: null,
   merchantConfigModal: null,
+  scavengeConfigModal: null,
+  messageConfigModal: null,
   spawnerRelocateFrom: null,
   merchantRelocateFrom: null,
   questWaypointPickTarget: null,
   sidebarSection: "tiles",
-  spawnerSidebarMode: "select",
   spawnerPlaceTileId: null,
+  spawnerPlaceInputResetSeq: 0,
   merchantPlaceMode: false,
+  scavengePlaceMode: false,
+  dialogueNpcPlaceMode: false,
   isPaletteSelectionMode: false,
   paletteSelectionStart: null,
   paletteSelectionCurrent: null,
@@ -589,6 +635,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     })),
   setDialogueNpcs: (entries) => set({ dialogueNpcs: entries }),
   setMessageDecals: (entries) => set({ messageDecals: entries }),
+  setScavengeDecals: (entries) => set({ scavengeDecals: entries }),
   setSpawnerMeta: (entries) => set({ spawnerMeta: entries }),
   setMerchantMeta: (entries) => set({ merchantMeta: entries }),
   setQuests: (quests) =>
@@ -656,19 +703,61 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
   },
   removeMessageDecalAt: (row, col) => {
-    const { saveToHistory, decalsGrid, messageDecals, groundGrid } = get();
+    const { saveToHistory, decalsGrid, messageDecals, scavengeDecals, groundGrid } = get();
     saveToHistory();
     const mapSize = getMapSideLength(groundGrid);
     const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
     set((s) => ({
       decalsGrid: newGrid,
       messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, messageDecals, mapSize),
+      scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(newGrid, scavengeDecals, mapSize),
       merchantMeta: reconcileMerchantMetaWithMerchantTiles(
         newGrid,
         s.collidablesGrid,
         s.merchantMeta,
         mapSize,
       ),
+      messageConfigModal:
+        s.messageConfigModal?.row === row && s.messageConfigModal?.col === col
+          ? null
+          : s.messageConfigModal,
+    }));
+  },
+  updateScavengeDecalEntry: (row, col, patch) => {
+    set((state) => {
+      const mapSide = getMapSideLength(state.groundGrid);
+      const idx = state.scavengeDecals.findIndex((e) => e.row === row && e.col === col);
+      const base = idx >= 0 ? state.scavengeDecals[idx]! : { row, col };
+      const next = { ...base, ...patch };
+      const [norm] = normalizeScavengeDecals([next], mapSide);
+      const merged = norm ?? next;
+      if (idx >= 0) {
+        return {
+          scavengeDecals: state.scavengeDecals.map((e, i) => (i === idx ? merged : e)),
+        };
+      }
+      return { scavengeDecals: [...state.scavengeDecals, merged] };
+    });
+  },
+  removeScavengeDecalAt: (row, col) => {
+    const { saveToHistory, decalsGrid, messageDecals, scavengeDecals, groundGrid } = get();
+    saveToHistory();
+    const mapSize = getMapSideLength(groundGrid);
+    const newGrid = replaceCellInGrid(decalsGrid, row, col, 0);
+    set((s) => ({
+      decalsGrid: newGrid,
+      messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, messageDecals, mapSize),
+      scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(newGrid, scavengeDecals, mapSize),
+      merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+        newGrid,
+        s.collidablesGrid,
+        s.merchantMeta,
+        mapSize,
+      ),
+      scavengeConfigModal:
+        s.scavengeConfigModal?.row === row && s.scavengeConfigModal?.col === col
+          ? null
+          : s.scavengeConfigModal,
     }));
   },
   removeDialogueNpcAt: (row, col) => {
@@ -718,6 +807,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             dialogueNpcRelocateFrom: null,
             spawnerRelocateFrom: null,
             questWaypointPickTarget: null,
+            dialogueNpcPlaceMode: false,
           }
         : {}),
       ...(layer !== "decals" && layer !== "collidables" ? { merchantRelocateFrom: null } : {}),
@@ -726,11 +816,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setExportText: (text) => set({ exportText: text }),
   setIsDragging: (dragging) => set({ isDragging: dragging }),
   setHasModifiedDuringDrag: (modified) => set({ hasModifiedDuringDrag: modified }),
+  resetMarkersDecalDragPaintFlag: () => set({ markersDecalPaintedDuringPointerDrag: false }),
+  finalizeMarkersBrushAfterDecalDrag: () =>
+    set((s) =>
+      s.markersDecalPaintedDuringPointerDrag
+        ? { selectedTileId: 0, markersDecalPaintedDuringPointerDrag: false }
+        : {},
+    ),
   setSaveStatus: (status) => set({ saveStatus: status }),
   setNpcConfigModal: (cell) =>
     set({
       npcConfigModal: cell,
-      ...(cell === null ? { dialogueNpcRelocateFrom: null } : {}),
+      ...(cell === null
+        ? { dialogueNpcRelocateFrom: null }
+        : {
+            scavengeConfigModal: null,
+            messageConfigModal: null,
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+          }),
     }),
   startDialogueNpcRelocate: (row, col) => {
     const sourceId = get().spawnsGrid[row]?.[col] ?? 0;
@@ -742,7 +846,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal: null,
       spawnerRelocateFrom: null,
       merchantRelocateFrom: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       questWaypointPickTarget: null,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
       activeLayer: "spawns",
       selectedTileId,
     });
@@ -757,12 +865,62 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setSpawnerConfigModal: (cell) =>
     set({
       spawnerConfigModal: cell,
-      ...(cell === null ? { spawnerRelocateFrom: null } : {}),
+      ...(cell === null
+        ? { spawnerRelocateFrom: null }
+        : {
+            scavengeConfigModal: null,
+            messageConfigModal: null,
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+          }),
     }),
   setMerchantConfigModal: (cell) =>
     set({
       merchantConfigModal: cell,
-      ...(cell === null ? { merchantRelocateFrom: null } : {}),
+      ...(cell === null
+        ? { merchantRelocateFrom: null }
+        : {
+            scavengeConfigModal: null,
+            messageConfigModal: null,
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+          }),
+    }),
+  setScavengeConfigModal: (cell) =>
+    set({
+      scavengeConfigModal: cell,
+      ...(cell
+        ? {
+            npcConfigModal: null,
+            spawnerConfigModal: null,
+            merchantConfigModal: null,
+            messageConfigModal: null,
+            dialogueNpcRelocateFrom: null,
+            spawnerRelocateFrom: null,
+            merchantRelocateFrom: null,
+            questWaypointPickTarget: null,
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+          }
+        : {}),
+    }),
+  setMessageConfigModal: (cell) =>
+    set({
+      messageConfigModal: cell,
+      ...(cell
+        ? {
+            npcConfigModal: null,
+            spawnerConfigModal: null,
+            merchantConfigModal: null,
+            scavengeConfigModal: null,
+            dialogueNpcRelocateFrom: null,
+            spawnerRelocateFrom: null,
+            merchantRelocateFrom: null,
+            questWaypointPickTarget: null,
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+          }
+        : {}),
     }),
   setMerchantShopLinesAt: (row, col, shopItems) => {
     const { saveToHistory, merchantMeta, decalsGrid, collidablesGrid, groundGrid } = get();
@@ -845,9 +1003,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       spawnerRelocateFrom: { row, col },
       spawnerConfigModal: null,
       merchantConfigModal: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       dialogueNpcRelocateFrom: null,
       merchantRelocateFrom: null,
       questWaypointPickTarget: null,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
       activeLayer: "spawns",
       selectedTileId: id,
       sidebarSection: "spawners",
@@ -869,6 +1031,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
       merchantRelocateFrom: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
     });
   },
   cancelQuestWaypointPick: () => set({ questWaypointPickTarget: null }),
@@ -878,20 +1044,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ? {}
         : {
             sidebarSection: section,
-            ...(section !== "spawners"
-              ? { spawnerSidebarMode: "select" as const, spawnerPlaceTileId: null }
-              : {}),
+            ...(section !== "spawners" ? { spawnerPlaceTileId: null } : {}),
             ...(section !== "merchants"
               ? { merchantPlaceMode: false, merchantRelocateFrom: null }
               : {}),
+            ...(section !== "scavenge" ? { scavengePlaceMode: false } : {}),
+            ...(section !== "npcs" ? { dialogueNpcPlaceMode: false } : {}),
           },
     ),
-  setSpawnerSidebarMode: (mode) =>
+  setSpawnerPlaceTileId: (id) =>
     set({
-      spawnerSidebarMode: mode,
-      ...(mode === "place" ? { activeLayer: "spawns" } : {}),
+      spawnerPlaceTileId: id,
+      ...(id != null && id > 0 ? { activeLayer: "spawns" as const } : {}),
     }),
-  setSpawnerPlaceTileId: (id) => set({ spawnerPlaceTileId: id }),
+  clearSpawnerPlacePick: () =>
+    set((s) => ({
+      spawnerPlaceTileId: null,
+      spawnerPlaceInputResetSeq: s.spawnerPlaceInputResetSeq + 1,
+    })),
   updateSpawnerMetaAt: (row, col, name) => {
     const trimmed = name.trim();
     set((state) => {
@@ -1019,10 +1189,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
       merchantConfigModal: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       spawnerRelocateFrom: null,
       merchantRelocateFrom: null,
       questWaypointPickTarget: null,
       sidebarSection: "npcs",
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
     });
   },
   openSpawnerMetaEditor: (row, col) => {
@@ -1034,11 +1208,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         spawnerConfigModal: { row, col },
         npcConfigModal: null,
         merchantConfigModal: null,
+        scavengeConfigModal: null,
+        messageConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
         merchantRelocateFrom: null,
         questWaypointPickTarget: null,
         sidebarSection: "spawners" as const,
+        scavengePlaceMode: false,
+        dialogueNpcPlaceMode: false,
         ...(id > 0 ? { selectedTileId: id } : {}),
       };
     });
@@ -1054,11 +1232,53 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       merchantRelocateFrom: null,
       npcConfigModal: null,
       spawnerConfigModal: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       spawnerRelocateFrom: null,
       dialogueNpcRelocateFrom: null,
       questWaypointPickTarget: null,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
       activeLayer: isDecalMerchant ? "decals" : "collidables",
       selectedTileId: isDecalMerchant ? DECAL_TILE_SHOPKEEPER : COLLIDABLE_TILE_MERCHANT,
+    });
+  },
+  openScavengeDecalEditor: (row, col) => {
+    set({
+      scavengeConfigModal: { row, col },
+      sidebarSection: "scavenge",
+      npcConfigModal: null,
+      spawnerConfigModal: null,
+      merchantConfigModal: null,
+      messageConfigModal: null,
+      merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
+      merchantRelocateFrom: null,
+      dialogueNpcRelocateFrom: null,
+      spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
+      activeLayer: "decals",
+      selectedTileId: DECAL_TILE_SCAVENGE,
+    });
+  },
+  openMessageDecalEditor: (row, col) => {
+    set({
+      messageConfigModal: { row, col },
+      sidebarSection: "markers",
+      npcConfigModal: null,
+      spawnerConfigModal: null,
+      merchantConfigModal: null,
+      scavengeConfigModal: null,
+      merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
+      merchantRelocateFrom: null,
+      dialogueNpcRelocateFrom: null,
+      spawnerRelocateFrom: null,
+      questWaypointPickTarget: null,
+      activeLayer: "decals",
+      selectedTileId: DECAL_TILE_MESSAGE,
     });
   },
   startMerchantRelocate: (row, col) => {
@@ -1072,10 +1292,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({
       merchantRelocateFrom: { row, col },
       merchantConfigModal: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
       questWaypointPickTarget: null,
       merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
       sidebarSection: "merchants",
       activeLayer: isDecalMerchant ? "decals" : "collidables",
       selectedTileId: isDecalMerchant ? DECAL_TILE_SHOPKEEPER : COLLIDABLE_TILE_MERCHANT,
@@ -1100,7 +1324,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedSpawnCell: { row, col },
         npcConfigModal: { row, col },
         spawnerConfigModal: null,
+        scavengeConfigModal: null,
+        messageConfigModal: null,
         sidebarSection: "npcs",
+        dialogueNpcPlaceMode: false,
       });
       return;
     }
@@ -1115,8 +1342,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectedSpawnCell: { row, col },
       npcConfigModal: { row, col },
       spawnerConfigModal: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       spawnerRelocateFrom: null,
       sidebarSection: "npcs",
+      dialogueNpcPlaceMode: false,
     }));
   },
   addMerchantAtTile: (row, col) => {
@@ -1132,6 +1362,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set((s) => ({
       decalsGrid: newGrid,
       messageDecals: reconcileMessageDecalsWithDecalsLayer(newGrid, s.messageDecals, mapSize),
+      scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(newGrid, s.scavengeDecals, mapSize),
       merchantMeta: reconcileMerchantMetaWithMerchantTiles(
         newGrid,
         s.collidablesGrid,
@@ -1143,6 +1374,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       sidebarSection: "merchants",
       selectedDecalCell: null,
       merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
     }));
   },
   removeMerchantAtTile: (row, col) => {
@@ -1173,6 +1406,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         s.messageDecals,
         mapSize,
       ),
+      scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+        nextDecals,
+        s.scavengeDecals,
+        mapSize,
+      ),
       merchantMeta: reconcileMerchantMetaWithMerchantTiles(
         nextDecals,
         nextCollidables,
@@ -1189,6 +1427,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? null
           : s.selectedDecalCell,
       merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
     }));
   },
   setMerchantPlaceMode: (enabled) =>
@@ -1200,8 +1440,51 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             activeLayer: "decals",
             selectedTileId: DECAL_TILE_SHOPKEEPER,
             merchantConfigModal: null,
+            scavengeConfigModal: null,
+            messageConfigModal: null,
             merchantRelocateFrom: null,
-            spawnerSidebarMode: "select",
+            scavengePlaceMode: false,
+            dialogueNpcPlaceMode: false,
+            spawnerPlaceTileId: null,
+          }
+        : {}),
+    }),
+  setScavengePlaceMode: (enabled) =>
+    set({
+      scavengePlaceMode: enabled,
+      ...(enabled
+        ? {
+            sidebarSection: "scavenge",
+            activeLayer: "decals",
+            selectedTileId: DECAL_TILE_SCAVENGE,
+            scavengeConfigModal: null,
+            messageConfigModal: null,
+            merchantPlaceMode: false,
+            merchantRelocateFrom: null,
+            dialogueNpcPlaceMode: false,
+            spawnerPlaceTileId: null,
+          }
+        : {}),
+    }),
+  setDialogueNpcPlaceMode: (enabled) =>
+    set({
+      dialogueNpcPlaceMode: enabled,
+      ...(enabled
+        ? {
+            sidebarSection: "npcs",
+            activeLayer: "spawns",
+            selectedTileId: NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
+            npcConfigModal: null,
+            spawnerConfigModal: null,
+            merchantConfigModal: null,
+            scavengeConfigModal: null,
+            messageConfigModal: null,
+            dialogueNpcRelocateFrom: null,
+            spawnerRelocateFrom: null,
+            merchantRelocateFrom: null,
+            questWaypointPickTarget: null,
+            merchantPlaceMode: false,
+            scavengePlaceMode: false,
             spawnerPlaceTileId: null,
           }
         : {}),
@@ -1219,7 +1502,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         npcConfigModal: null,
         dialogueNpcRelocateFrom: null,
         spawnerRelocateFrom: null,
+        scavengeConfigModal: null,
+        messageConfigModal: null,
         sidebarSection: "spawners",
+        dialogueNpcPlaceMode: false,
       });
       return;
     }
@@ -1237,7 +1523,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       npcConfigModal: null,
       dialogueNpcRelocateFrom: null,
       spawnerRelocateFrom: null,
+      scavengeConfigModal: null,
+      messageConfigModal: null,
       sidebarSection: "spawners",
+      dialogueNpcPlaceMode: false,
     }));
   },
   setIsPaletteSelectionMode: (mode) => set({ isPaletteSelectionMode: mode }),
@@ -1303,6 +1592,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       decalsGrid,
       dialogueNpcs,
       messageDecals,
+      scavengeDecals,
       spawnerMeta,
       merchantMeta,
       quests,
@@ -1315,6 +1605,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       decals: decalsGrid.map((row) => [...row]),
       dialogueNpcs: dialogueNpcs.map((e) => ({ ...e })),
       messageDecals: messageDecals.map((e) => ({ ...e })),
+      scavengeDecals: scavengeDecals.map((e) => ({ ...e })),
       merchantMeta: merchantMeta.map((e) => {
         const snap: WorldMapMerchantEntry = { row: e.row, col: e.col };
         const lab = e.label?.trim().slice(0, MERCHANT_META_LABEL_MAX);
@@ -1349,6 +1640,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       previousState.messageDecals !== undefined
         ? previousState.messageDecals.map((e) => ({ ...e }))
         : reconcileMessageDecalsWithDecalsLayer(previousState.decals, [], mapSide);
+    const restoredScavengeDecals =
+      previousState.scavengeDecals !== undefined
+        ? previousState.scavengeDecals.map((e) => ({ ...e }))
+        : reconcileScavengeDecalsWithDecalsLayer(previousState.decals, [], mapSide);
     const restoredMerchantMeta =
       previousState.merchantMeta !== undefined
         ? previousState.merchantMeta.map((e) => {
@@ -1376,6 +1671,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       decalsGrid: previousState.decals,
       dialogueNpcs: (previousState.dialogueNpcs ?? []).map((e) => ({ ...e })),
       messageDecals: restoredMessageDecals,
+      scavengeDecals: restoredScavengeDecals,
       merchantMeta: restoredMerchantMeta,
       spawnerMeta: (previousState.spawnerMeta ?? []).map((e) => ({ ...e })),
       quests: (previousState.quests ?? []).map((q) => ({
@@ -1428,6 +1724,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         return {
           decalsGrid: emptyD,
           messageDecals: [],
+          scavengeDecals: [],
           merchantRelocateFrom: null,
           merchantMeta: reconcileMerchantMetaWithMerchantTiles(
             emptyD,
@@ -1437,6 +1734,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ),
           selectedDecalCell: null,
           merchantConfigModal: null,
+          scavengeConfigModal: null,
+          messageConfigModal: null,
         };
       });
     }
@@ -1462,6 +1761,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       merchantRelocateFrom: null,
       questWaypointPickTarget: null,
       merchantPlaceMode: false,
+      scavengePlaceMode: false,
+      dialogueNpcPlaceMode: false,
     });
   },
 
@@ -1487,9 +1788,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       merchantMeta,
       questWaypointPickTarget,
       sidebarSection,
-      spawnerSidebarMode,
       spawnerPlaceTileId,
       merchantPlaceMode,
+      scavengePlaceMode,
+      dialogueNpcPlaceMode,
     } = get();
 
     if (dialogueNpcRelocateFrom) {
@@ -1583,6 +1885,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         selectedSpawnCell: { row, col },
         spawnerConfigModal: { row, col },
         npcConfigModal: null,
+        scavengeConfigModal: null,
+        messageConfigModal: null,
       }));
       return;
     }
@@ -1636,6 +1940,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          nextDecals,
+          s.scavengeDecals,
+          mapSize,
+        ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(
           nextDecals,
           nextColl,
@@ -1645,6 +1954,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         merchantRelocateFrom: null,
         merchantConfigModal: { row, col },
         merchantPlaceMode: false,
+        scavengePlaceMode: false,
+        dialogueNpcPlaceMode: false,
         selectedDecalCell: null,
       }));
       return;
@@ -1677,23 +1988,42 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return;
     }
 
-    if (!paintStroke) {
-      const cur = spawnsGrid[row]?.[col] ?? 0;
-      if (cur > 0) {
-        if (isNpcDialogueSpawnTile(cur)) {
-          set({
-            selectedSpawnCell: { row, col },
-            npcConfigModal: { row, col },
-          });
-        } else {
-          get().openSpawnerMetaEditor(row, col);
-        }
+    if (!paintStroke && sidebarSection === "npcs" && dialogueNpcPlaceMode) {
+      const curNpcPlace = spawnsGrid[row]?.[col] ?? 0;
+      if (isNpcDialogueSpawnTile(curNpcPlace)) {
+        get().addDialogueNpcAtTile(row, col);
         return;
       }
-      set({ selectedSpawnCell: null });
+      if (curNpcPlace > 0) {
+        return;
+      }
+      get().addDialogueNpcAtTile(row, col);
+      return;
     }
 
-    if (!paintStroke && activeLayer === "decals") {
+    if (!paintStroke) {
+      const skipSpawnPickForDecalPaint =
+        sidebarSection === "markers" && activeLayer === "decals";
+      const cur = spawnsGrid[row]?.[col] ?? 0;
+      if (!skipSpawnPickForDecalPaint) {
+        if (cur > 0) {
+          if (isNpcDialogueSpawnTile(cur)) {
+            set({
+              selectedSpawnCell: { row, col },
+              npcConfigModal: { row, col },
+            });
+          } else {
+            get().openSpawnerMetaEditor(row, col);
+          }
+          return;
+        }
+        set({ selectedSpawnCell: null });
+      } else {
+        set({ selectedSpawnCell: null });
+      }
+    }
+
+    if (!paintStroke && activeLayer === "decals" && sidebarSection !== "cursor") {
       const currentTileId = decalsGrid[row][col];
       if (currentTileId <= 0) {
         set({ selectedDecalCell: null });
@@ -1713,7 +2043,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (
       !paintStroke &&
       sidebarSection === "spawners" &&
-      spawnerSidebarMode === "place" &&
       spawnerPlaceTileId != null &&
       spawnerPlaceTileId > 0 &&
       SPAWNER_META_CONFIGURABLE_ENTRIES.some((e) => e.id === spawnerPlaceTileId)
@@ -1758,12 +2087,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       const newDecals = replaceCellInGrid(decalsGrid, row, col, DECAL_TILE_SHOPKEEPER);
       set((s) => ({
         merchantPlaceMode: false,
+        dialogueNpcPlaceMode: false,
         activeLayer: "decals",
         selectedTileId: DECAL_TILE_SHOPKEEPER,
         decalsGrid: newDecals,
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newDecals,
           s.messageDecals,
+          mapSize,
+        ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          newDecals,
+          s.scavengeDecals,
           mapSize,
         ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(
@@ -1779,7 +2114,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     if (
       !paintStroke &&
-      sidebarSection === "merchants" &&
+      (sidebarSection === "merchants" || sidebarSection === "cursor") &&
       !merchantPlaceMode &&
       !merchantRelocateFrom
     ) {
@@ -1791,7 +2126,78 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     }
 
-    if (get().sidebarSection !== "tiles") {
+    if (!paintStroke && (sidebarSection === "scavenge" || sidebarSection === "cursor")) {
+      const decalId = decalsGrid[row]?.[col] ?? 0;
+      if (scavengePlaceMode) {
+        if (decalId === DECAL_TILE_SCAVENGE) {
+          get().openScavengeDecalEditor(row, col);
+          set({ scavengePlaceMode: false });
+          return;
+        }
+        saveToHistory();
+        const mapSize = getMapSideLength(groundGrid);
+        const newDecals = replaceCellInGrid(decalsGrid, row, col, DECAL_TILE_SCAVENGE);
+        set((s) => ({
+          scavengePlaceMode: false,
+          dialogueNpcPlaceMode: false,
+          activeLayer: "decals",
+          selectedTileId: DECAL_TILE_SCAVENGE,
+          decalsGrid: newDecals,
+          messageDecals: reconcileMessageDecalsWithDecalsLayer(
+            newDecals,
+            s.messageDecals,
+            mapSize,
+          ),
+          scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+            newDecals,
+            s.scavengeDecals,
+            mapSize,
+          ),
+          merchantMeta: reconcileMerchantMetaWithMerchantTiles(
+            newDecals,
+            s.collidablesGrid,
+            s.merchantMeta,
+            mapSize,
+          ),
+          selectedDecalCell: null,
+        }));
+        return;
+      }
+      if (decalId === DECAL_TILE_SCAVENGE) {
+        get().openScavengeDecalEditor(row, col);
+        return;
+      }
+    }
+
+    if (!paintStroke && (sidebarSection === "markers" || sidebarSection === "cursor")) {
+      const decalId = decalsGrid[row]?.[col] ?? 0;
+      if (decalId === DECAL_TILE_MESSAGE) {
+        const stMsg = get();
+        if (
+          sidebarSection === "cursor" ||
+          stMsg.selectedTileId === DECAL_TILE_MESSAGE ||
+          stMsg.selectedTileId <= 0
+        ) {
+          get().openMessageDecalEditor(row, col);
+          return;
+        }
+      }
+    }
+
+    const stPaint = get();
+    const paintSection = stPaint.sidebarSection;
+    if (paintSection !== "tiles" && paintSection !== "markers") {
+      return;
+    }
+    if (paintSection === "markers" && stPaint.activeLayer !== "decals") {
+      return;
+    }
+
+    if (
+      paintSection === "markers" &&
+      stPaint.activeLayer === "decals" &&
+      stPaint.selectedTileId <= 0
+    ) {
       return;
     }
 
@@ -1799,7 +2205,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       saveToHistory();
     }
 
-    if (clipboard && !opts?.skipClipboard) {
+    if (clipboard && !opts?.skipClipboard && paintSection !== "markers") {
       pasteClipboard(row, col);
       return;
     }
@@ -1861,12 +2267,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
             s.messageDecals,
             mapSize,
           ),
+          scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+            newDecals,
+            s.scavengeDecals,
+            mapSize,
+          ),
           merchantMeta: reconcileMerchantMetaWithMerchantTiles(
             newDecals,
             s.collidablesGrid,
             s.merchantMeta,
             mapSize,
           ),
+          ...(paintSection === "markers" && selectedTileId > 0 ? { selectedTileId: 0 } : {}),
         }));
         return;
       }
@@ -1946,6 +2358,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           ? 0
           : selectedTileId;
 
+      const markersPlacedDecal = paintSection === "markers" && newTileId > 0;
+      const dragging = get().isDragging;
+      const clearMarkersBrushNow =
+        markersPlacedDecal && (!paintStroke || !dragging);
+      const markMarkersBrushClearAfterDrag =
+        markersPlacedDecal && paintStroke && dragging;
+
       const newGrid = replaceCellInGrid(decalsGrid, row, col, newTileId);
       const mapSize = getMapSideLength(groundGrid);
       set((s) => ({
@@ -1953,6 +2372,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newGrid,
           s.messageDecals,
+          mapSize,
+        ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          newGrid,
+          s.scavengeDecals,
           mapSize,
         ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(
@@ -1965,11 +2389,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col && newTileId === 0
             ? null
             : s.merchantConfigModal,
+        scavengeConfigModal:
+          s.scavengeConfigModal?.row === row &&
+          s.scavengeConfigModal?.col === col &&
+          newTileId !== DECAL_TILE_SCAVENGE
+            ? null
+            : s.scavengeConfigModal,
+        messageConfigModal:
+          s.messageConfigModal?.row === row &&
+          s.messageConfigModal?.col === col &&
+          newTileId !== DECAL_TILE_MESSAGE
+            ? null
+            : s.messageConfigModal,
         merchantRelocateFrom: (() => {
           const mr = s.merchantRelocateFrom;
           if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
           return null;
         })(),
+        ...(clearMarkersBrushNow ? { selectedTileId: 0 } : {}),
+        ...(markMarkersBrushClearAfterDrag ? { markersDecalPaintedDuringPointerDrag: true } : {}),
       }));
       return;
     }
@@ -2076,6 +2514,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          newGrid,
+          s.scavengeDecals,
+          mapSize,
+        ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(
           newGrid,
           s.collidablesGrid,
@@ -2086,6 +2529,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.merchantConfigModal?.row === row && s.merchantConfigModal?.col === col
             ? null
             : s.merchantConfigModal,
+        scavengeConfigModal:
+          s.scavengeConfigModal?.row === row && s.scavengeConfigModal?.col === col
+            ? null
+            : s.scavengeConfigModal,
+        messageConfigModal:
+          s.messageConfigModal?.row === row && s.messageConfigModal?.col === col
+            ? null
+            : s.messageConfigModal,
         merchantRelocateFrom: (() => {
           const mr = s.merchantRelocateFrom;
           if (!mr || mr.row !== row || mr.col !== col) return s.merchantRelocateFrom;
@@ -2202,6 +2653,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           s.messageDecals,
           mapSize,
         ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          newDecals,
+          s.scavengeDecals,
+          mapSize,
+        ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(
           newDecals,
           s.collidablesGrid,
@@ -2210,6 +2666,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ),
         merchantConfigModal: (() => {
           const m = s.merchantConfigModal;
+          if (!m) return null;
+          if (m.row >= r0 && m.row < r1 && m.col >= c0 && m.col < c1) return null;
+          return m;
+        })(),
+        scavengeConfigModal: (() => {
+          const m = s.scavengeConfigModal;
+          if (!m) return null;
+          if (m.row >= r0 && m.row < r1 && m.col >= c0 && m.col < c1) return null;
+          return m;
+        })(),
+        messageConfigModal: (() => {
+          const m = s.messageConfigModal;
           if (!m) return null;
           if (m.row >= r0 && m.row < r1 && m.col >= c0 && m.col < c1) return null;
           return m;
@@ -2340,6 +2808,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         messageDecals: reconcileMessageDecalsWithDecalsLayer(
           newDecalsGrid,
           s.messageDecals,
+          mapSize,
+        ),
+        scavengeDecals: reconcileScavengeDecalsWithDecalsLayer(
+          newDecalsGrid,
+          s.scavengeDecals,
           mapSize,
         ),
         merchantMeta: reconcileMerchantMetaWithMerchantTiles(

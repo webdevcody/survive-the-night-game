@@ -7,8 +7,19 @@ export function RelocateMapBanner() {
   const questPick = useEditorStore((s) => s.questWaypointPickTarget);
   const merchantRelocate = useEditorStore((s) => s.merchantRelocateFrom);
   const merchantPlace = useEditorStore((s) => s.merchantPlaceMode);
+  const scavengePlace = useEditorStore((s) => s.scavengePlaceMode);
+  const dialogueNpcPlace = useEditorStore((s) => s.dialogueNpcPlaceMode);
 
-  if (!npcFrom && !spawnerFrom && !questPick && !merchantRelocate && !merchantPlace) return null;
+  if (
+    !npcFrom &&
+    !spawnerFrom &&
+    !questPick &&
+    !merchantRelocate &&
+    !merchantPlace &&
+    !scavengePlace &&
+    !dialogueNpcPlace
+  )
+    return null;
 
   let label: string;
   if (merchantRelocate) {
@@ -16,6 +27,12 @@ export function RelocateMapBanner() {
   } else if (merchantPlace) {
     label =
       "Place merchant — click a map tile to add a shopkeeper (decals). Press Esc to cancel.";
+  } else if (scavengePlace) {
+    label =
+      "Place scavenge — click a map tile to add a scavenge pile (decals). Press Esc to cancel.";
+  } else if (dialogueNpcPlace) {
+    label =
+      "Add NPC — click an empty spawns cell to place a dialogue NPC. Press Esc to cancel.";
   } else if (npcFrom) {
     label = `Relocate dialogue NPC from (${npcFrom.row}, ${npcFrom.col}) — click an empty spawns tile. Press Esc to cancel.`;
   } else if (spawnerFrom) {

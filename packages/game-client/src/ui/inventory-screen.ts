@@ -40,6 +40,7 @@ import {
 import { formatDisplayName } from "@/util/format";
 import { calculateHudScale } from "@/util/hud-scale";
 import { PlayerClient } from "@/entities/player";
+import { ClientInventory } from "@/extensions/inventory";
 import { ClientPositionable } from "@/extensions/positionable";
 import { ClientPoison } from "@/extensions/poison";
 import { ClientInfiniteRun } from "@/extensions/infinite-run";
@@ -47,7 +48,10 @@ import {
   CHARACTER_STAT_KEYS,
   CHARACTER_STAT_MODIFIERS,
   MAX_POINTS_PER_CHARACTER_STAT,
-  computeEvadeChance,
+  computeStatEvadeChanceDisplay,
+  computeTotalEvadeChance,
+  computeArmorEvadeBonusFromEquipment,
+  countEquippedArmorPieces,
   computeInventoryWeightKg,
   computePassiveHpRegenIntervalSeconds,
   computeStaminaRegenMultiplier,
@@ -220,7 +224,11 @@ function formatTooltipNumber(value: number, digits = 2): string {
   return Number(value.toFixed(digits)).toString();
 }
 
-function getCharacterStatTooltipLines(key: CharacterStatKey, points: number): string[] {
+function getCharacterStatTooltipLines(
+  key: CharacterStatKey,
+  points: number,
+  player?: PlayerClient,
+): string[] {
   switch (key) {
     case "health":
       return [
@@ -228,11 +236,27 @@ function getCharacterStatTooltipLines(key: CharacterStatKey, points: number): st
         `Current bonus: +${points * CHARACTER_STAT_MODIFIERS.healthPerPoint} max HP.`,
       ];
     case "evade": {
-      const chance = computeEvadeChance(points);
-      return [
+      const base = [
         "Zombie hits can deal 0 damage.",
-        `+${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeChancePerPoint, 1)} evade per point, up to ${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeMaxChance)} max.`,
-        `Current evade chance: ${formatTooltipPercent(chance, 1)}.`,
+        `+${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeChancePerPoint, 1)} evade per point from stats, up to ${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.evadeMaxChance)} max (with armor).`,
+        `Each equipped armor piece adds +${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.armorEvadeChancePerEquippedPiece, 1)} before the cap.`,
+      ];
+      if (player?.hasExt(ClientInventory)) {
+        const eq = player.getExt(ClientInventory).getEquipment();
+        const statOnly = computeStatEvadeChanceDisplay(points);
+        const armorBonus = computeArmorEvadeBonusFromEquipment(eq);
+        const total = computeTotalEvadeChance(points, eq);
+        const n = countEquippedArmorPieces(eq);
+        return [
+          ...base,
+          `From stats: ${formatTooltipPercent(statOnly, 1)}.`,
+          `From armor (${n} piece${n === 1 ? "" : "s"}): +${formatTooltipPercent(armorBonus, 1)}.`,
+          `Total vs zombies: ${formatTooltipPercent(total, 1)}.`,
+        ];
+      }
+      return [
+        ...base,
+        `Current from stats only: ${formatTooltipPercent(computeStatEvadeChanceDisplay(points), 1)} (open Character tab with gear for total).`,
       ];
     }
     case "accuracy": {
@@ -307,8 +331,16 @@ function formatCharacterStatInlineSummary(key: CharacterStatKey, player: PlayerC
       return `${Math.round(player.getHealth())} / ${player.getMaxHealth()} HP`;
     case "stamina":
       return `${Math.round(player.getStamina())} / ${player.getMaxStamina()} stamina`;
-    case "evade":
-      return `${formatTooltipPercent(computeEvadeChance(points), 1)} evade`;
+    case "evade": {
+      if (!player.hasExt(ClientInventory)) {
+        return `${formatTooltipPercent(computeStatEvadeChanceDisplay(points), 1)} evade`;
+      }
+      const eq = player.getExt(ClientInventory).getEquipment();
+      const statOnly = computeStatEvadeChanceDisplay(points);
+      const armor = computeArmorEvadeBonusFromEquipment(eq);
+      const total = computeTotalEvadeChance(points, eq);
+      return `${formatTooltipPercent(statOnly, 1)} stats + ${formatTooltipPercent(armor, 1)} armor = ${formatTooltipPercent(total, 1)}`;
+    }
     case "accuracy": {
       const spreadMultiplier = Math.max(
         0.2,
@@ -2763,6 +2795,10 @@ export class InventoryScreenUI {
     const stackKg =
       getItemWeightKg(hovered.itemType) * (hovered.state?.count ?? 1);
     const weightLine = `${stackKg.toFixed(1)} kg`;
+    const armorEvadeLine =
+      itemRegistry.get(hovered.itemType)?.category === "armor"
+        ? `Evade (vs zombies): +${formatTooltipPercent(CHARACTER_STAT_MODIFIERS.armorEvadeChancePerEquippedPiece, 1)} while equipped`
+        : null;
 
     ctx.textAlign = "center";
     ctx.font = "bold 16px Arial";
@@ -2771,11 +2807,12 @@ export class InventoryScreenUI {
     ctx.font = "14px Arial";
     const wKind = ctx.measureText(kindLine).width;
     const wWeight = ctx.measureText(weightLine).width;
+    const wArmor = armorEvadeLine ? ctx.measureText(armorEvadeLine).width : 0;
     const wPrice = priceLine ? ctx.measureText(priceLine).width : 0;
 
     const pad = 8;
-    const bw = Math.max(wName, wKind, wWeight, wPrice) + pad * 2;
-    const bh = 60 + (priceLine ? 18 : 0);
+    const bw = Math.max(wName, wKind, wWeight, wPrice, wArmor) + pad * 2;
+    const bh = 60 + (armorEvadeLine ? 22 : 0) + (priceLine ? 18 : 0);
     const bx = this._mx - bw / 2;
     const by = this._my - bh - 10;
 
@@ -2792,9 +2829,12 @@ export class InventoryScreenUI {
     ctx.fillStyle = RPG_METADATA_MUTED;
     ctx.fillText(kindLine, this._mx, by + 36);
     ctx.fillText(weightLine, this._mx, by + 52);
+    if (armorEvadeLine) {
+      ctx.fillText(armorEvadeLine, this._mx, by + 68);
+    }
     if (priceLine) {
       ctx.fillStyle = RPG_COUNTER_GOLD;
-      ctx.fillText(priceLine, this._mx, by + 70);
+      ctx.fillText(priceLine, this._mx, by + (armorEvadeLine ? 86 : 70));
     }
   }
 
@@ -2806,7 +2846,7 @@ export class InventoryScreenUI {
 
     const points = player.getCharacterStat(key);
     const title = `${STAT_LABELS[key]} · ${points}/${MAX_POINTS_PER_CHARACTER_STAT} pts`;
-    const lines = getCharacterStatTooltipLines(key, points);
+    const lines = getCharacterStatTooltipLines(key, points, player);
     const pad = 10;
     const titleLineHeight = 20;
     const bodyLineHeight = 17;

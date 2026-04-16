@@ -29,6 +29,7 @@ import {
   isNpcDialogueSpawnTile,
   isPlayerSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
+import { EditorSpawnSpriteIcon } from "./EditorSpawnSpriteIcon";
 
 function configurableEntriesForGroup(
   group: (typeof SPAWNER_META_TYPEAHEAD_GROUP_ORDER)[number],
@@ -111,7 +112,10 @@ export function SpawnerMetaModal() {
                 size="sm"
                 className="h-8 w-full rounded border-gray-600 bg-gray-950 text-[11px] text-gray-100"
               >
-                <SelectValue />
+                <span className="flex min-w-0 items-center gap-2">
+                  <EditorSpawnSpriteIcon spawnTileId={tileId} zoom={2} />
+                  <SelectValue />
+                </span>
               </SelectTrigger>
               <SelectContent className="max-h-[min(24rem,60vh)] border-gray-600 bg-gray-900 text-gray-100">
                 {SPAWNER_TYPE_SELECT_PLAYER_ENTRIES.length > 0 ? (
@@ -123,7 +127,10 @@ export function SpawnerMetaModal() {
                         value={String(e.id)}
                         className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
                       >
-                        {e.label}
+                        <span className="flex items-center gap-2">
+                          <EditorSpawnSpriteIcon spawnTileId={e.id} zoom={2} />
+                          {e.label}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -144,7 +151,10 @@ export function SpawnerMetaModal() {
                           value={String(e.id)}
                           className="cursor-pointer text-[11px] focus:bg-gray-800 focus:text-gray-100"
                         >
-                          {e.label}
+                          <span className="flex items-center gap-2">
+                            <EditorSpawnSpriteIcon spawnTileId={e.id} zoom={2} />
+                            {e.label}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

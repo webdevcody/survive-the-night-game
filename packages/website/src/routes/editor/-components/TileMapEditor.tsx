@@ -14,11 +14,20 @@ import {
   isNpcDialogueSpawnTile,
 } from "@survive-the-night/game-shared/map/spawn-palette";
 import {
+  EDITOR_SPAWN_SPRITE_SHEET_URLS,
+  getEditorSpawnSpriteBlit,
+} from "@survive-the-night/game-shared/map/editor-spawn-sprite";
+import {
+  EDITOR_DECAL_SPRITE_SHEET_URLS,
+  getEditorDecalSpriteBlit,
+} from "@survive-the-night/game-shared/map/editor-decal-sprite";
+import {
   DECAL_PALETTE_ENTRIES,
   DECAL_TILE_MESSAGE,
   getDecalPaletteShortLabel,
 } from "@survive-the-night/game-shared/map/decal-palette";
 import { getMessageDecalLines } from "@survive-the-night/game-shared/map/world-map-types";
+import { EDITOR_SIDEBAR_HOTKEY_TO_SECTION } from "../-sidebar-tabs";
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!el || !(el instanceof HTMLElement)) return false;
@@ -56,18 +65,20 @@ export function TileMapEditor() {
   const clipboard = useEditorStore((state) => state.clipboard);
   const sidebarSection = useEditorStore((state) => state.sidebarSection);
   const questWaypointPickTarget = useEditorStore((state) => state.questWaypointPickTarget);
-  const spawnerSidebarMode = useEditorStore((state) => state.spawnerSidebarMode);
   const spawnerPlaceTileId = useEditorStore((state) => state.spawnerPlaceTileId);
-  const canPaintTiles = sidebarSection === "tiles";
+  const canPaintOnMap = sidebarSection === "tiles" || sidebarSection === "markers";
   const questWaypointPickActive = Boolean(questWaypointPickTarget);
   const spawnerPlaceActive =
     sidebarSection === "spawners" &&
-    spawnerSidebarMode === "place" &&
     spawnerPlaceTileId != null &&
     spawnerPlaceTileId > 0;
   const merchantPlaceMode = useEditorStore((state) => state.merchantPlaceMode);
+  const scavengePlaceMode = useEditorStore((state) => state.scavengePlaceMode);
+  const dialogueNpcPlaceMode = useEditorStore((state) => state.dialogueNpcPlaceMode);
   const merchantRelocateFrom = useEditorStore((state) => state.merchantRelocateFrom);
   const merchantPlaceActive = sidebarSection === "merchants" && merchantPlaceMode;
+  const scavengePlaceActive = sidebarSection === "scavenge" && scavengePlaceMode;
+  const dialogueNpcPlaceActive = sidebarSection === "npcs" && dialogueNpcPlaceMode;
   const merchantRelocateActive = Boolean(merchantRelocateFrom);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +86,11 @@ export function TileMapEditor() {
   const hoverCellRef = useRef<{ row: number; col: number } | null>(null);
   const lastDragCellRef = useRef<{ row: number; col: number } | null>(null);
   const schedulePaintRef = useRef<() => void>(() => {});
+  const editorAtlasImagesRef = useRef<{
+    items: HTMLImageElement | null;
+    characters: HTMLImageElement | null;
+    locker: HTMLImageElement | null;
+  }>({ items: null, characters: null, locker: null });
 
   /** Cell where pointer went down — `mouseEnter` does not fire for that cell until leaving and re-entering. */
   const dragStartCellRef = useRef<{ row: number; col: number } | null>(null);
@@ -129,6 +145,38 @@ export function TileMapEditor() {
   }, [setViewportSize, tilePx]);
 
   useEffect(() => {
+    const items = new Image();
+    const characters = new Image();
+    const locker = new Image();
+    let cancelled = false;
+    const bump = () => schedulePaintRef.current();
+    items.onload = () => {
+      if (!cancelled) {
+        editorAtlasImagesRef.current.items = items;
+        bump();
+      }
+    };
+    characters.onload = () => {
+      if (!cancelled) {
+        editorAtlasImagesRef.current.characters = characters;
+        bump();
+      }
+    };
+    locker.onload = () => {
+      if (!cancelled) {
+        editorAtlasImagesRef.current.locker = locker;
+        bump();
+      }
+    };
+    items.src = EDITOR_SPAWN_SPRITE_SHEET_URLS.items;
+    characters.src = EDITOR_SPAWN_SPRITE_SHEET_URLS.characters;
+    locker.src = EDITOR_DECAL_SPRITE_SHEET_URLS.locker;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (shouldSuppressMapInteraction(e.target)) return;
       if (e.key === "Escape") {
@@ -148,18 +196,24 @@ export function TileMapEditor() {
           st.cancelQuestWaypointPick();
           return;
         }
-        if (
-          st.sidebarSection === "spawners" &&
-          st.spawnerSidebarMode === "place" &&
-          st.spawnerPlaceTileId != null
-        ) {
+        if (st.sidebarSection === "spawners") {
           e.preventDefault();
-          st.setSpawnerPlaceTileId(null);
+          st.clearSpawnerPlacePick();
           return;
         }
         if (st.merchantPlaceMode) {
           e.preventDefault();
           st.setMerchantPlaceMode(false);
+          return;
+        }
+        if (st.scavengePlaceMode) {
+          e.preventDefault();
+          st.setScavengePlaceMode(false);
+          return;
+        }
+        if (st.dialogueNpcPlaceMode) {
+          e.preventDefault();
+          st.setDialogueNpcPlaceMode(false);
           return;
         }
         if (st.merchantRelocateFrom) {
@@ -168,7 +222,12 @@ export function TileMapEditor() {
           return;
         }
       }
-      if (!e.ctrlKey && !e.metaKey && useEditorStore.getState().sidebarSection === "tiles") {
+      const brushSection = useEditorStore.getState().sidebarSection;
+      if (
+        !e.ctrlKey &&
+        !e.metaKey &&
+        (brushSection === "tiles" || brushSection === "markers")
+      ) {
         const incBrush = e.code === "NumpadAdd" || e.code === "Equal";
         const decBrush =
           e.code === "NumpadSubtract" || e.code === "Minus";
@@ -193,9 +252,18 @@ export function TileMapEditor() {
         else panCamera(step, 0);
         return;
       }
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && k.length === 1) {
+        const section = EDITOR_SIDEBAR_HOTKEY_TO_SECTION[k.toLowerCase()];
+        if (section) {
+          e.preventDefault();
+          useEditorStore.getState().setSidebarSection(section);
+          return;
+        }
+      }
       const lower = k.toLowerCase();
       if (lower === "p") {
-        if (useEditorStore.getState().sidebarSection !== "tiles") return;
+        const sec = useEditorStore.getState().sidebarSection;
+        if (sec !== "tiles" && sec !== "markers") return;
         e.preventDefault();
         const hover = hoverCellRef.current;
         if (hover) {
@@ -207,7 +275,8 @@ export function TileMapEditor() {
         return;
       }
       if (lower === "e") {
-        if (useEditorStore.getState().sidebarSection !== "tiles") return;
+        const sec = useEditorStore.getState().sidebarSection;
+        if (sec !== "tiles" && sec !== "markers") return;
         e.preventDefault();
         const hover = hoverCellRef.current;
         if (hover) {
@@ -223,7 +292,7 @@ export function TileMapEditor() {
       if (e.key === "Delete" || e.key === "Backspace") {
         const st = useEditorStore.getState();
         if (
-          st.sidebarSection === "tiles" &&
+          (st.sidebarSection === "tiles" || st.sidebarSection === "markers") &&
           st.activeLayer === "decals" &&
           st.selectedDecalCell
         ) {
@@ -345,6 +414,7 @@ export function TileMapEditor() {
   }, []);
 
   const handleCellMouseDown = () => {
+    useEditorStore.getState().resetMarkersDecalDragPaintFlag();
     saveToHistory();
     setIsDragging(true);
     setHasModifiedDuringDrag(false);
@@ -366,6 +436,7 @@ export function TileMapEditor() {
 
   const handleDragEnd = useCallback(() => {
     const didPaintDuringDrag = useEditorStore.getState().hasModifiedDuringDrag;
+    useEditorStore.getState().finalizeMarkersBrushAfterDecalDrag();
     setIsDragging(false);
     setHasModifiedDuringDrag(false);
     dragStartCellRef.current = null;
@@ -475,6 +546,8 @@ export function TileMapEditor() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, cssW, cssH);
       ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
 
       for (let vi = 0; vi < vrc; vi++) {
         for (let vj = 0; vj < vcc; vj++) {
@@ -482,6 +555,10 @@ export function TileMapEditor() {
           const colIdx = s.cameraX + vj;
           const dx = vj * tilePx;
           const dy = vi * tilePx;
+
+          // Decal/spawn overlays use "screen" or alpha; reset so ground/collidable drawImage isn't blended wrong.
+          ctx.globalAlpha = 1;
+          ctx.globalCompositeOperation = "source-over";
 
           const groundTileId = s.groundGrid[rowIdx]?.[colIdx] ?? 0;
           const gc = groundTileId % s.groundDimensions.cols;
@@ -499,11 +576,39 @@ export function TileMapEditor() {
           if (spawnTileId > 0) {
             const spawnEntry = SPAWN_PALETTE_ENTRIES.find((e) => e.id === spawnTileId);
             if (spawnEntry && spawnEntry.id !== 0) {
-              ctx.save();
-              ctx.globalAlpha = s.activeLayer === "spawns" ? 0.65 : 0.38;
-              ctx.fillStyle = spawnEntry.color;
-              ctx.fillRect(dx, dy, tilePx, tilePx);
-              ctx.restore();
+              const blit = getEditorSpawnSpriteBlit(spawnTileId);
+              const sheets = editorAtlasImagesRef.current;
+              const spriteImg =
+                blit?.sheet === "items"
+                  ? sheets.items
+                  : blit?.sheet === "characters"
+                    ? sheets.characters
+                    : null;
+              let drewSprite = false;
+              if (blit && spriteImg && spriteImg.complete && spriteImg.naturalWidth > 0) {
+                ctx.save();
+                ctx.globalAlpha = s.activeLayer === "spawns" ? 0.88 : 0.52;
+                ctx.drawImage(
+                  spriteImg,
+                  blit.sx,
+                  blit.sy,
+                  blit.sw,
+                  blit.sh,
+                  dx,
+                  dy,
+                  tilePx,
+                  tilePx,
+                );
+                ctx.restore();
+                drewSprite = true;
+              }
+              if (!drewSprite) {
+                ctx.save();
+                ctx.globalAlpha = s.activeLayer === "spawns" ? 0.65 : 0.38;
+                ctx.fillStyle = spawnEntry.color;
+                ctx.fillRect(dx, dy, tilePx, tilePx);
+                ctx.restore();
+              }
               const short = (() => {
                 if (isNpcDialogueSpawnTile(spawnTileId)) {
                   const npc = s.dialogueNpcs.find(
@@ -542,12 +647,49 @@ export function TileMapEditor() {
           if (decalTileId > 0) {
             const decalEntry = DECAL_PALETTE_ENTRIES.find((e) => e.id === decalTileId);
             if (decalEntry && decalEntry.id !== 0) {
-              ctx.save();
-              ctx.globalCompositeOperation = "screen";
-              ctx.globalAlpha = s.activeLayer === "decals" ? 0.55 : 0.22;
-              ctx.fillStyle = decalEntry.color;
-              ctx.fillRect(dx, dy, tilePx, tilePx);
-              ctx.restore();
+              const dBlit = getEditorDecalSpriteBlit(decalTileId, {
+                groundCols: s.groundDimensions.cols,
+                groundRows: s.groundDimensions.rows,
+                collidablesCols: s.collidablesDimensions.cols,
+                collidablesRows: s.collidablesDimensions.rows,
+              });
+              const atl = editorAtlasImagesRef.current;
+              const decalImg =
+                dBlit?.sheet === "items"
+                  ? atl.items
+                  : dBlit?.sheet === "ground"
+                    ? s.groundSheetImage
+                    : dBlit?.sheet === "collidables"
+                      ? s.collidablesSheetImage
+                      : dBlit?.sheet === "locker"
+                        ? atl.locker
+                        : null;
+              let drewDecalSprite = false;
+              if (dBlit && decalImg && decalImg.complete && decalImg.naturalWidth > 0) {
+                ctx.save();
+                ctx.globalAlpha = s.activeLayer === "decals" ? 0.88 : 0.52;
+                ctx.drawImage(
+                  decalImg,
+                  dBlit.sx,
+                  dBlit.sy,
+                  dBlit.sw,
+                  dBlit.sh,
+                  dx,
+                  dy,
+                  tilePx,
+                  tilePx,
+                );
+                ctx.restore();
+                drewDecalSprite = true;
+              }
+              if (!drewDecalSprite) {
+                ctx.save();
+                ctx.globalCompositeOperation = "screen";
+                ctx.globalAlpha = s.activeLayer === "decals" ? 0.55 : 0.22;
+                ctx.fillStyle = decalEntry.color;
+                ctx.fillRect(dx, dy, tilePx, tilePx);
+                ctx.restore();
+              }
               let decalShort =
                 decalTileId === DECAL_TILE_MESSAGE
                   ? (() => {
@@ -604,6 +746,8 @@ export function TileMapEditor() {
         }
       }
 
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#1f2937";
       ctx.lineWidth = 1;
       for (let c = 0; c <= vcc; c++) {
@@ -701,7 +845,6 @@ export function TileMapEditor() {
 
       const placeSpawnerPick =
         s.sidebarSection === "spawners" &&
-        s.spawnerSidebarMode === "place" &&
         s.spawnerPlaceTileId != null &&
         s.spawnerPlaceTileId > 0;
       if (placeSpawnerPick && hoverPickCell) {
@@ -729,7 +872,7 @@ export function TileMapEditor() {
       }
 
       const hover = hoverCellRef.current;
-      if (hover && s.sidebarSection === "tiles") {
+      if (hover && (s.sidebarSection === "tiles" || s.sidebarSection === "markers")) {
         const localRow = hover.row - s.cameraY;
         const localCol = hover.col - s.cameraX;
         const brushSize = s.brushSize;
@@ -917,10 +1060,14 @@ export function TileMapEditor() {
                 ? "cursor-grabbing"
                 : shiftHeld
                   ? "cursor-grab"
-                  : canPaintTiles ||
+                  : sidebarSection === "cursor"
+                  ? "cursor-default"
+                  : canPaintOnMap ||
                       questWaypointPickActive ||
                       spawnerPlaceActive ||
                       merchantPlaceActive ||
+                      scavengePlaceActive ||
+                      dialogueNpcPlaceActive ||
                       merchantRelocateActive
                     ? "cursor-crosshair"
                     : "cursor-default"
@@ -941,7 +1088,7 @@ export function TileMapEditor() {
               if (e.button !== 0) return;
               const t = clientToTile(e.clientX, e.clientY);
               if (!t) return;
-              if (canPaintTiles) {
+              if (canPaintOnMap) {
                 handleCellMouseDownOnTile(t.row, t.col);
               }
             }}

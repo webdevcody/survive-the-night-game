@@ -17,6 +17,8 @@ export const TILE_IDS = {
 };
 
 export * from "./spawn-palette";
+export * from "./editor-spawn-sprite";
+export * from "./editor-decal-sprite";
 export * from "./world-map-types";
 export * from "./decal-palette";
 export * from "./collidable-tile-ids";

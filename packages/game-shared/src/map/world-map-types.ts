@@ -5,7 +5,15 @@ import {
   NPC_DIALOGUE_SURVIVOR_SPAWN_TILE_ID,
   NPC_HEALER_DIALOGUE_SPAWN_TILE_ID,
 } from "./spawn-palette";
-import { DECAL_TILE_MESSAGE, DECAL_TILE_SHOPKEEPER } from "./decal-palette";
+import type { ZombieDropTableEntry } from "../config/zombie-drop-tables";
+import { itemRegistry } from "../entities/item-registry";
+import { resourceRegistry } from "../entities/resource-registry";
+import { weaponRegistry } from "../entities/weapon-registry";
+import {
+  DECAL_TILE_MESSAGE,
+  DECAL_TILE_SCAVENGE,
+  DECAL_TILE_SHOPKEEPER,
+} from "./decal-palette";
 import { COLLIDABLE_TILE_MERCHANT } from "./collidable-tile-ids";
 import type { PlayerQuestStatePayload } from "../quests/player-quest-state";
 import { emptyPlayerQuestState, getActiveStepIndex } from "../quests/player-quest-state";
@@ -1178,4 +1186,160 @@ export function reconcileMessageDecalsWithDecalsLayer(
     }
   }
   return normalizeMessageDecals(out, mapSide);
+}
+
+/** Default item roll count (inclusive) when `dropCountMin` / `dropCountMax` omitted. */
+export const DEFAULT_SCAVENGE_DECAL_DROP_MIN = 1;
+export const DEFAULT_SCAVENGE_DECAL_DROP_MAX = 3;
+export const DEFAULT_SCAVENGE_DECAL_SEARCH_MS = 4000;
+export const DEFAULT_SCAVENGE_DECAL_RESPAWN_MS = 120_000;
+
+/** Per-tile loot pile config for {@link DECAL_TILE_SCAVENGE} cells. */
+export interface WorldMapScavengeDecalEntry {
+  row: number;
+  col: number;
+  /** Weighted rows; omit to use `LEGACY_RANDOM_DROP_TABLE` at runtime. */
+  dropTable?: ZombieDropTableEntry[];
+  dropCountMin?: number;
+  dropCountMax?: number;
+  searchDurationMs?: number;
+  respawnMs?: number;
+}
+
+function isAuthoredLootItemType(itemType: string): boolean {
+  return (
+    itemRegistry.has(itemType) ||
+    weaponRegistry.has(itemType) ||
+    resourceRegistry.has(itemType)
+  );
+}
+
+function normalizeScavengeDropTableRow(raw: unknown): ZombieDropTableEntry | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const itemType = typeof o.itemType === "string" ? o.itemType : null;
+  if (!itemType || !isAuthoredLootItemType(itemType)) return null;
+  const weight = o.weight;
+  if (typeof weight !== "number" || !Number.isFinite(weight) || weight <= 0) return null;
+  const row: ZombieDropTableEntry = { itemType, weight };
+  if (typeof o.count === "number" && Number.isFinite(o.count) && o.count >= 1) {
+    row.count = Math.floor(o.count);
+  }
+  if (
+    typeof o.countMin === "number" &&
+    typeof o.countMax === "number" &&
+    Number.isFinite(o.countMin) &&
+    Number.isFinite(o.countMax)
+  ) {
+    row.countMin = Math.max(0, Math.floor(o.countMin));
+    row.countMax = Math.max(0, Math.floor(o.countMax));
+  }
+  return row;
+}
+
+export function normalizeScavengeDecals(
+  entries: unknown,
+  mapSide: number,
+): WorldMapScavengeDecalEntry[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+  const out: WorldMapScavengeDecalEntry[] = [];
+  for (const e of entries) {
+    if (!e || typeof e !== "object") continue;
+    const row = (e as WorldMapScavengeDecalEntry).row;
+    const col = (e as WorldMapScavengeDecalEntry).col;
+    if (
+      typeof row !== "number" ||
+      typeof col !== "number" ||
+      !Number.isInteger(row) ||
+      !Number.isInteger(col) ||
+      row < 0 ||
+      col < 0 ||
+      row >= mapSide ||
+      col >= mapSide
+    ) {
+      continue;
+    }
+
+    let dropTable: ZombieDropTableEntry[] | undefined;
+    const rawTable = (e as WorldMapScavengeDecalEntry).dropTable;
+    if (Array.isArray(rawTable)) {
+      const rows = rawTable.map(normalizeScavengeDropTableRow).filter((r): r is ZombieDropTableEntry => r != null);
+      if (rows.length > 0) {
+        dropTable = rows;
+      }
+    }
+
+    let dropCountMin = (e as WorldMapScavengeDecalEntry).dropCountMin;
+    let dropCountMax = (e as WorldMapScavengeDecalEntry).dropCountMax;
+    if (dropCountMin !== undefined) {
+      if (typeof dropCountMin !== "number" || !Number.isInteger(dropCountMin) || dropCountMin < 1) {
+        dropCountMin = undefined;
+      }
+    }
+    if (dropCountMax !== undefined) {
+      if (typeof dropCountMax !== "number" || !Number.isInteger(dropCountMax) || dropCountMax < 1) {
+        dropCountMax = undefined;
+      }
+    }
+    if (dropCountMin !== undefined && dropCountMax !== undefined && dropCountMin > dropCountMax) {
+      const t = dropCountMin;
+      dropCountMin = dropCountMax;
+      dropCountMax = t;
+    }
+
+    let searchDurationMs = (e as WorldMapScavengeDecalEntry).searchDurationMs;
+    if (
+      searchDurationMs !== undefined &&
+      (typeof searchDurationMs !== "number" ||
+        !Number.isFinite(searchDurationMs) ||
+        searchDurationMs < 250 ||
+        searchDurationMs > 60_000)
+    ) {
+      searchDurationMs = undefined;
+    }
+
+    let respawnMs = (e as WorldMapScavengeDecalEntry).respawnMs;
+    if (
+      respawnMs !== undefined &&
+      (typeof respawnMs !== "number" || !Number.isFinite(respawnMs) || respawnMs < 1000 || respawnMs > 3_600_000)
+    ) {
+      respawnMs = undefined;
+    }
+
+    const entry: WorldMapScavengeDecalEntry = { row, col };
+    if (dropTable) entry.dropTable = dropTable;
+    if (dropCountMin !== undefined) entry.dropCountMin = dropCountMin;
+    if (dropCountMax !== undefined) entry.dropCountMax = dropCountMax;
+    if (searchDurationMs !== undefined) entry.searchDurationMs = searchDurationMs;
+    if (respawnMs !== undefined) entry.respawnMs = respawnMs;
+    out.push(entry);
+  }
+  return out;
+}
+
+/** Keeps `scavengeDecals` aligned with decals-layer scavenge tiles (editor + server). */
+export function reconcileScavengeDecalsWithDecalsLayer(
+  decals: number[][],
+  rawEntries: unknown,
+  mapSide: number,
+): WorldMapScavengeDecalEntry[] {
+  const normalized = normalizeScavengeDecals(rawEntries, mapSide);
+  const byKey = new Map<string, WorldMapScavengeDecalEntry>();
+  for (const e of normalized) {
+    byKey.set(`${e.row},${e.col}`, e);
+  }
+  const out: WorldMapScavengeDecalEntry[] = [];
+  for (let row = 0; row < mapSide; row++) {
+    const rowArr = decals[row];
+    if (!rowArr) continue;
+    for (let col = 0; col < mapSide; col++) {
+      if (rowArr[col] !== DECAL_TILE_SCAVENGE) continue;
+      const k = `${row},${col}`;
+      const prev = byKey.get(k);
+      out.push(prev ? { ...prev, row, col } : { row, col });
+    }
+  }
+  return normalizeScavengeDecals(out, mapSide);
 }

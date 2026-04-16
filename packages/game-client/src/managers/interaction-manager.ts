@@ -2,6 +2,7 @@ import { GameState, getEntityById } from "@/state";
 import { ClientEntityBase } from "@/extensions/client-entity";
 import {
   ClientCarryable,
+  ClientHoldInteract,
   ClientInventory,
   ClientPlaceable,
   ClientPositionable,
@@ -10,8 +11,9 @@ import { getClosestInteractiveEntity } from "@/util/get-closest-interactive";
 import { getPlayer } from "@/util/get-player";
 import { distance } from "@shared/util/physics";
 import { getConfig } from "@shared/config";
-import { ItemType, InventoryItem } from "@shared/util/inventory";
+import { ItemType } from "@shared/util/inventory";
 import { itemRegistry } from "@shared/entities";
+import { ScavengeDecalClient } from "@/entities/environment/scavenge-decal";
 
 /**
  * Manages interaction state and logic for the game client
@@ -21,11 +23,30 @@ export class InteractionManager {
   private interactHoldStartTime: number = 0;
   private interactHoldTargetEntityId: number | null = null;
   private interactHoldCompleted: boolean = false; // Prevent immediate restart after completion
-  private readonly INTERACT_HOLD_DURATION = 500; // 0.5 seconds in milliseconds
+  private interactHoldDurationMs: number = 500;
+  private readonly INTERACT_HOLD_DURATION_PLACEABLE = 500; // 0.5 seconds in milliseconds
   private readonly CLIENT_INTERACT_RADIUS_BUFFER = 4; // Client requires player to be slightly closer than server
 
   private static lastInventoryFullMessageTime: number = 0;
   private static readonly INVENTORY_FULL_MESSAGE_COOLDOWN = 2000; // 2 seconds
+
+  private getHoldDurationMsForEntity(entity: ClientEntityBase): number {
+    if (entity.hasExt(ClientPlaceable)) {
+      return this.INTERACT_HOLD_DURATION_PLACEABLE;
+    }
+    if (entity.hasExt(ClientHoldInteract)) {
+      return Math.max(0, entity.getExt(ClientHoldInteract).getHoldDurationMs());
+    }
+    return 0;
+  }
+
+  private entityRequiresHold(entity: ClientEntityBase): boolean {
+    return this.getHoldDurationMsForEntity(entity) > 0;
+  }
+
+  private isScavengeDecalUnavailable(entity: ClientEntityBase): boolean {
+    return entity instanceof ScavengeDecalClient && !entity.isLootReady();
+  }
 
   /**
    * Start interact hold - begins tracking hold progress for placeable items
@@ -50,10 +71,14 @@ export class InteractionManager {
       return null;
     }
 
-    // Check if entity is placeable (requires hold)
-    const isPlaceable = closestEntity.hasExt(ClientPlaceable);
+    if (this.isScavengeDecalUnavailable(closestEntity)) {
+      return null;
+    }
 
-    if (isPlaceable) {
+    const holdMs = this.getHoldDurationMsForEntity(closestEntity);
+
+    if (holdMs > 0) {
+      this.interactHoldDurationMs = holdMs;
       // Start hold timer
       this.isHoldingInteract = true;
       this.interactHoldStartTime = Date.now();
@@ -142,11 +167,7 @@ export class InteractionManager {
       ? getEntityById(gameState, this.interactHoldTargetEntityId)
       : null;
 
-    if (
-      !targetEntity ||
-      !targetEntity.hasExt(ClientPositionable) ||
-      !targetEntity.hasExt(ClientPlaceable)
-    ) {
+    if (!targetEntity || !targetEntity.hasExt(ClientPositionable) || !this.entityRequiresHold(targetEntity)) {
       this.cancelInteractHold(gameState);
       return null;
     }
@@ -174,7 +195,8 @@ export class InteractionManager {
     // Update progress
     const now = Date.now();
     const elapsed = now - this.interactHoldStartTime;
-    const progress = Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
+    const duration = Math.max(1, this.interactHoldDurationMs);
+    const progress = Math.min(1, elapsed / duration);
 
     // Update player's pickup progress for rendering
     const playerEntity = getPlayer(gameState);
@@ -253,6 +275,7 @@ export class InteractionManager {
 
     const now = Date.now();
     const elapsed = now - this.interactHoldStartTime;
-    return Math.min(1, elapsed / this.INTERACT_HOLD_DURATION);
+    const duration = Math.max(1, this.interactHoldDurationMs);
+    return Math.min(1, elapsed / duration);
   }
 }

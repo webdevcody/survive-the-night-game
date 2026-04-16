@@ -1,4 +1,4 @@
-import type { ItemType } from "../util/inventory";
+import type { InventoryItem, ItemType } from "../util/inventory";
 
 /** Weighted loot row; higher weight = more likely when a drop succeeds. */
 export type ZombieDropTableEntry = {
@@ -64,12 +64,14 @@ export const LEGACY_RANDOM_DROP_TABLE: ZombieDropTableEntry[] = [
   { itemType: "landmine", weight: 4 },
   { itemType: "sentry_gun", weight: 2 },
   { itemType: "gasoline", weight: 6 },
+  { itemType: "zombie_skin", weight: 22 },
 ];
 
 /** Basic zombie: only these four; pistol rare, ammo uncommon, coin/cloth common. */
 export const NORMAL_ZOMBIE_DROP_TABLE: ZombieDropTableEntry[] = [
   { itemType: "cloth", weight: 25 },
   { itemType: "coin", weight: 25 },
+  { itemType: "zombie_skin", weight: 22 },
   { itemType: "dirty_water", weight: 12 },
   { itemType: "pistol_ammo", weight: 8 },
   { itemType: "pistol", weight: 2 },
@@ -214,3 +216,28 @@ export const ZOMBIE_DROP_TABLE_BY_ID: Record<string, ZombieDropTableEntry[]> = {
     torch: 0.8,
   }),
 };
+
+/** Weighted pick; throws if `table` is empty. */
+export function pickWeightedZombieDropEntry(table: ZombieDropTableEntry[]): ZombieDropTableEntry {
+  if (table.length === 0) {
+    throw new Error("pickWeightedZombieDropEntry: empty table");
+  }
+  const totalWeight = table.reduce((sum, entry) => sum + entry.weight, 0);
+  if (totalWeight <= 0) {
+    return table[0]!;
+  }
+  let random = Math.random() * totalWeight;
+  for (const entry of table) {
+    random -= entry.weight;
+    if (random <= 0) {
+      return entry;
+    }
+  }
+  return table[0]!;
+}
+
+export function rollZombieDropInventoryItem(table: ZombieDropTableEntry[]): InventoryItem {
+  const entry = pickWeightedZombieDropEntry(table);
+  const count = resolveZombieDropStackCount(entry);
+  return count > 1 ? { itemType: entry.itemType, state: { count } } : { itemType: entry.itemType };
+}

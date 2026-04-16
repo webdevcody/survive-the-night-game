@@ -6,6 +6,7 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "@shared/map/world-map-types";
 import type { WorldMapQuestDefinition } from "@shared/map/quest-types";
@@ -31,6 +32,8 @@ export interface WorldMapFile {
   dialogueNpcs?: WorldMapDialogueNpcEntry[];
   /** Optional message decals (`DECAL_TILE_MESSAGE`); see `WorldMapMessageDecalEntry`. */
   messageDecals?: WorldMapMessageDecalEntry[];
+  /** Optional scavenge piles (`DECAL_TILE_SCAVENGE`); see `WorldMapScavengeDecalEntry`. */
+  scavengeDecals?: WorldMapScavengeDecalEntry[];
   /** Optional authored quests (see `WorldMapQuestDefinition`). */
   quests?: WorldMapQuestDefinition[];
   /** Optional spawner labels and respawn overrides from the map editor. */

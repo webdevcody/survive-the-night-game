@@ -68,7 +68,7 @@ export const playerConfig = {
   /**
    * Stamina regeneration rate per second when not sprinting
    */
-  STAMINA_REGEN_RATE: 10,
+  STAMINA_REGEN_RATE: 5,
 
   /**
    * Seconds before stamina can regenerate after full depletion

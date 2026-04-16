@@ -1,44 +1,32 @@
 import { Button } from "~/components/ui/button";
 import { useEditorStore } from "../-store";
 import { TilePalette } from "./TilePalette";
-import { ExpandMapDialog } from "./ExpandMapDialog";
+import { MarkersPanel } from "./MarkersPanel";
 import { QuestsEditorPanel } from "./QuestsEditorPanel";
 import { NpcsListPanel } from "./NpcsListPanel";
 import { SpawnersListPanel } from "./SpawnersListPanel";
 import { MerchantsListPanel } from "./MerchantsListPanel";
-import type { EditorSidebarSection, Layer, SaveStatus } from "../-types";
+import { ScavengeListPanel } from "./ScavengeListPanel";
+import type { Layer } from "../-types";
+import { EDITOR_SIDEBAR_TAB_ORDER } from "../-sidebar-tabs";
 import { getConfig } from "@survive-the-night/game-shared/config";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 interface EditorRightOverlayProps {
-  onSaveMap: () => void;
-  saveStatus: SaveStatus;
   onTileSelect: (row: number, col: number, layer: Layer) => void;
 }
 
-const btnSquare = "!rounded-none text-xs h-7 px-2";
-const sectionLabel = "text-[10px] font-medium uppercase tracking-wide text-gray-500";
+const iconTabBtn =
+  "relative !h-8 !w-8 !min-w-0 shrink-0 !rounded-none !p-0 text-white [&_svg]:size-[18px]";
 
-const sidebarTabs: { id: EditorSidebarSection; label: string }[] = [
-  { id: "tiles", label: "Tiles" },
-  { id: "npcs", label: "NPCs" },
-  { id: "spawners", label: "Spawners" },
-  { id: "merchants", label: "Merchants" },
-  { id: "quests", label: "Quests" },
-];
+const ICON_RAIL_PX = 44;
 
-export function EditorRightOverlay({
-  onSaveMap,
-  saveStatus,
-  onTileSelect,
-}: EditorRightOverlayProps) {
-  const history = useEditorStore((state) => state.history);
+export function EditorRightOverlay({ onTileSelect }: EditorRightOverlayProps) {
   const sidebarSection = useEditorStore((state) => state.sidebarSection);
   const setSidebarSection = useEditorStore((state) => state.setSidebarSection);
   const activeLayer = useEditorStore((state) => state.activeLayer);
   const switchLayer = useEditorStore((state) => state.switchLayer);
 
-  const undo = useEditorStore((state) => state.undo);
   const groundDimensions = useEditorStore((state) => state.groundDimensions);
   const collidablesDimensions = useEditorStore((state) => state.collidablesDimensions);
 
@@ -47,103 +35,52 @@ export function EditorRightOverlay({
     groundDimensions.cols * tilePx,
     collidablesDimensions.cols * tilePx,
   );
-  const panelWidthPx = sheetWidthPx + 10;
-
-  const [expandMapOpen, setExpandMapOpen] = useState(false);
+  const panelWidthPx = sheetWidthPx + 10 + ICON_RAIL_PX;
 
   useEffect(() => {
-    if (sidebarSection === "tiles" && activeLayer === "spawns") {
+    if (sidebarSection === "cursor") {
       switchLayer("ground");
+    }
+  }, [sidebarSection, switchLayer]);
+
+  useEffect(() => {
+    if (sidebarSection === "tiles" && (activeLayer === "spawns" || activeLayer === "decals")) {
+      switchLayer("ground");
+    }
+  }, [sidebarSection, activeLayer, switchLayer]);
+
+  useEffect(() => {
+    if (sidebarSection === "markers" && activeLayer !== "decals") {
+      switchLayer("decals");
     }
   }, [sidebarSection, activeLayer, switchLayer]);
 
   return (
     <div
-      className="pointer-events-auto mr-[5px] box-border flex h-full max-h-screen min-w-0 flex-col rounded-none bg-gray-900/95 text-white shadow-2xl ring-1 ring-gray-700/90 backdrop-blur-md"
+      className="pointer-events-auto mr-[5px] box-border flex h-full max-h-screen min-w-0 flex-row rounded-none bg-gray-900/95 text-white shadow-2xl ring-1 ring-gray-700/90 backdrop-blur-md"
       style={{ width: `min(${panelWidthPx}px, calc(100vw - 10px))` }}
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="shrink-0 border-b border-gray-700 px-[5px] py-2 space-y-2">
-        <div>
-          <p className={`${sectionLabel} mb-1`}>Map file</p>
-          <div className="flex flex-wrap gap-1">
-            <Button
-              size="sm"
-              onClick={onSaveMap}
-              disabled={saveStatus === "saving"}
-              className={`${btnSquare} ${
-                saveStatus === "saved"
-                  ? "bg-green-600 hover:bg-green-700 text-white"
-                  : saveStatus === "error"
-                    ? "bg-red-600 hover:bg-red-700 text-white"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-              }`}
-            >
-              {saveStatus === "saving"
-                ? "Saving..."
-                : saveStatus === "saved"
-                  ? "Saved!"
-                  : saveStatus === "error"
-                    ? "Error"
-                    : "Save"}
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={undo}
-              disabled={history.length === 0}
-              className={`${btnSquare} text-white border border-gray-600 ${
-                history.length === 0 ? "cursor-not-allowed opacity-60" : ""
-              }`}
-              title="Ctrl+Z"
-            >
-              Undo ({history.length})
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setExpandMapOpen(true)}
-              className={`${btnSquare} text-white border border-gray-600`}
-            >
-              Expand map
-            </Button>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-[5px] py-2">
+        {sidebarSection === "cursor" ? (
+          <div className="flex min-h-0 flex-1 flex-col justify-center px-2 py-4 text-center">
+            <p className="text-[11px] leading-snug text-gray-300">
+              Click the map to open spawners, NPC dialogue, merchants, scavenge piles, and other
+              interactables. Right-click still adds an NPC at a tile.
+            </p>
+            <p className="mt-3 text-[10px] leading-snug text-gray-500">
+              Use the Tiles and Markers tabs to paint ground, collidables, and decals.
+            </p>
           </div>
-        </div>
-
-        <div>
-          <p className={`${sectionLabel} mb-1`}>Sidebar</p>
-          <div className="flex flex-wrap items-stretch gap-1">
-            <div
-              className="grid min-w-0 flex-1 grid-cols-2 gap-0.5 rounded border border-gray-600 bg-gray-950/60 p-0.5 sm:grid-cols-3 lg:grid-cols-5"
-              role="radiogroup"
-              aria-label="Sidebar section"
-            >
-              {sidebarTabs.map(({ id, label }) => (
-                <Button
-                  key={id}
-                  type="button"
-                  size="sm"
-                  role="radio"
-                  aria-checked={sidebarSection === id}
-                  onClick={() => setSidebarSection(id)}
-                  className={`${btnSquare} min-w-0 border-0 shadow-none ${
-                    sidebarSection === id
-                      ? "bg-slate-600 text-white hover:bg-slate-500"
-                      : "bg-transparent text-gray-400 hover:bg-gray-800/80 hover:text-gray-200"
-                  }`}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-[5px] py-2">
+        ) : null}
         {sidebarSection === "tiles" ? (
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             <TilePalette onTileSelect={onTileSelect} />
+          </div>
+        ) : null}
+        {sidebarSection === "markers" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+            <MarkersPanel />
           </div>
         ) : null}
         {sidebarSection === "npcs" ? (
@@ -161,6 +98,11 @@ export function EditorRightOverlay({
             <MerchantsListPanel />
           </div>
         ) : null}
+        {sidebarSection === "scavenge" ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ScavengeListPanel />
+          </div>
+        ) : null}
         {sidebarSection === "quests" ? (
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             <QuestsEditorPanel />
@@ -168,7 +110,41 @@ export function EditorRightOverlay({
         ) : null}
       </div>
 
-      <ExpandMapDialog open={expandMapOpen} onOpenChange={setExpandMapOpen} />
+      <div
+        className="flex w-[44px] shrink-0 flex-col items-center gap-0.5 border-l border-gray-700 bg-gray-950/80 py-1.5 pl-1 pr-0.5"
+        role="radiogroup"
+        aria-label="Sidebar section"
+      >
+        {EDITOR_SIDEBAR_TAB_ORDER.map(({ id, label, hotkey, Icon }) => (
+          <Button
+            key={id}
+            type="button"
+            size="icon"
+            variant="secondary"
+            role="radio"
+            aria-checked={sidebarSection === id}
+            aria-label={`${label}, shortcut ${hotkey}`}
+            aria-keyshortcuts={hotkey}
+            title={`${label} (${hotkey})`}
+            onClick={() => setSidebarSection(id)}
+            className={`${iconTabBtn} border shadow-none ${
+              sidebarSection === id
+                ? "border-slate-500 bg-slate-600 text-white hover:bg-slate-500"
+                : "border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+            }`}
+          >
+            <Icon aria-hidden />
+            <span
+              className={`pointer-events-none absolute bottom-0.5 right-0.5 z-10 text-[8px] font-semibold leading-none tabular-nums drop-shadow-[0_1px_1px_rgba(0,0,0,0.85)] ${
+                sidebarSection === id ? "text-white/90" : "text-gray-400"
+              }`}
+              aria-hidden
+            >
+              {hotkey}
+            </span>
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

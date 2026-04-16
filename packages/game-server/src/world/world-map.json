@@ -230270,7 +230270,7 @@
       0,
       0,
       0,
-      2,
+      0,
       0,
       0,
       0,
@@ -230528,7 +230528,7 @@
       0,
       0,
       0,
-      9,
+      0,
       0,
       0,
       0,
@@ -264200,8 +264200,36 @@
     ]
   ],
   "messageDecals": [],
+  "scavengeDecals": [],
   "spawnerMeta": [],
   "merchantMeta": [
+    {
+      "row": 34,
+      "col": 95,
+      "label": "Ollie's Shop",
+      "shopItems": [
+        {
+          "itemType": "grenade",
+          "price": 30
+        },
+        {
+          "itemType": "bandage",
+          "price": 10
+        },
+        {
+          "itemType": "bow",
+          "price": 30
+        },
+        {
+          "itemType": "arrow_ammo",
+          "price": 10
+        },
+        {
+          "itemType": "pistol_ammo",
+          "price": 8
+        }
+      ]
+    },
     {
       "row": 109,
       "col": 202,

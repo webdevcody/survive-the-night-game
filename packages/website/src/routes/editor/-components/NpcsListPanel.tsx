@@ -17,6 +17,8 @@ export function NpcsListPanel() {
   const removeDialogueNpcAt = useEditorStore((state) => state.removeDialogueNpcAt);
   const openDialogueNpcEditor = useEditorStore((state) => state.openDialogueNpcEditor);
   const focusCameraOnMapCell = useEditorStore((state) => state.focusCameraOnMapCell);
+  const dialogueNpcPlaceMode = useEditorStore((state) => state.dialogueNpcPlaceMode);
+  const setDialogueNpcPlaceMode = useEditorStore((state) => state.setDialogueNpcPlaceMode);
 
   const sorted = useMemo(
     () => [...dialogueNpcs].sort((a, b) => a.row - b.row || a.col - b.col),
@@ -34,15 +36,6 @@ export function NpcsListPanel() {
     }
     return { inView: a, rest: b };
   }, [sorted, groundGrid, cameraX, cameraY, viewportWidthTiles, viewportHeightTiles]);
-
-  if (sorted.length === 0) {
-    return (
-      <p className="text-[10px] text-gray-500">
-        No dialogue NPCs yet. Right-click the map and choose{" "}
-        <span className="text-emerald-300">Add NPC</span>.
-      </p>
-    );
-  }
 
   const renderRow = (entry: WorldMapDialogueNpcEntry) => {
     const preview = getDialogueNpcLines(entry)[0]?.slice(0, 100) ?? "";
@@ -87,29 +80,55 @@ export function NpcsListPanel() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <p className="text-[10px] text-gray-500">
-        {sorted.length} NPC{sorted.length === 1 ? "" : "s"} ({inView.length} in view) — click a row
-        to edit. <span className="text-gray-400">Go</span> moves the camera.
-      </p>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-        <div>
-          <p className={`${sectionLabel} mb-1`}>In view</p>
-          {inView.length === 0 ? (
-            <p className="text-[10px] text-gray-600">None in current view.</p>
-          ) : (
-            <ul className="space-y-1.5">{inView.map(renderRow)}</ul>
-          )}
-        </div>
-        <div>
-          <p className={`${sectionLabel} mb-1`}>Rest of map</p>
-          {rest.length === 0 ? (
-            <p className="text-[10px] text-gray-600">All NPCs are in view.</p>
-          ) : (
-            <ul className="space-y-1.5">{rest.map(renderRow)}</ul>
-          )}
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col gap-2 text-[11px] text-gray-200">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={dialogueNpcPlaceMode ? "default" : "secondary"}
+          className={`!h-7 !rounded-none !px-2 !text-[11px] ${
+            dialogueNpcPlaceMode ? "bg-emerald-700 hover:bg-emerald-600" : ""
+          }`}
+          onClick={() => setDialogueNpcPlaceMode(!dialogueNpcPlaceMode)}
+        >
+          {dialogueNpcPlaceMode ? "Placing… (click map)" : "Add NPC"}
+        </Button>
+        <span className="text-[9px] text-gray-500">
+          One click adds a dialogue NPC on an empty spawns cell; Esc cancels. You can also
+          right-click the map → Add NPC.
+        </span>
       </div>
+      {sorted.length === 0 ? (
+        <p className="text-[10px] text-gray-500">
+          No dialogue NPCs yet. Use <span className="text-emerald-300">Add NPC</span> above or
+          right-click the map.
+        </p>
+      ) : (
+        <>
+          <p className="text-[10px] text-gray-500">
+            {sorted.length} NPC{sorted.length === 1 ? "" : "s"} ({inView.length} in view) — click a
+            row to edit. <span className="text-gray-400">Go</span> moves the camera.
+          </p>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            <div>
+              <p className={`${sectionLabel} mb-1`}>In view</p>
+              {inView.length === 0 ? (
+                <p className="text-[10px] text-gray-600">None in current view.</p>
+              ) : (
+                <ul className="space-y-1.5">{inView.map(renderRow)}</ul>
+              )}
+            </div>
+            <div>
+              <p className={`${sectionLabel} mb-1`}>Rest of map</p>
+              {rest.length === 0 ? (
+                <p className="text-[10px] text-gray-600">All NPCs are in view.</p>
+              ) : (
+                <ul className="space-y-1.5">{rest.map(renderRow)}</ul>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

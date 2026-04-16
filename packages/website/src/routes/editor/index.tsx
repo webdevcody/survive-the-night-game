@@ -7,9 +7,12 @@ import { useWorldMap, useSaveWorldMap } from "./-hooks/useEditorApi";
 import { TileMapEditor } from "./-components/TileMapEditor";
 import { EditorMinimap } from "./-components/EditorMinimap";
 import { EditorRightOverlay } from "./-components/EditorRightOverlay";
+import { EditorTopLeftToolbar } from "./-components/EditorTopLeftToolbar";
 import { NpcConfigModal } from "./-components/NpcConfigModal";
 import { SpawnerMetaModal } from "./-components/SpawnerMetaModal";
 import { MerchantMetaModal } from "./-components/MerchantMetaModal";
+import { ScavengeDecalModal } from "./-components/ScavengeDecalModal";
+import { MessageDecalModal } from "./-components/MessageDecalModal";
 import { RelocateMapBanner } from "./-components/RelocateMapBanner";
 import { getConfig } from "@survive-the-night/game-shared/config";
 import {
@@ -22,6 +25,7 @@ import {
   normalizeDialogueNpcs,
   reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
+  reconcileScavengeDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
 } from "@survive-the-night/game-shared/map/world-map-types";
@@ -55,6 +59,7 @@ function MapEditor() {
   const setDecalsGrid = useEditorStore((state) => state.setDecalsGrid);
   const setDialogueNpcs = useEditorStore((state) => state.setDialogueNpcs);
   const setMessageDecals = useEditorStore((state) => state.setMessageDecals);
+  const setScavengeDecals = useEditorStore((state) => state.setScavengeDecals);
   const setQuests = useEditorStore((state) => state.setQuests);
   const setSaveStatus = useEditorStore((state) => state.setSaveStatus);
   const setHistory = useEditorStore((state) => state.setHistory);
@@ -69,6 +74,7 @@ function MapEditor() {
   const decalsGrid = useEditorStore((state) => state.decalsGrid);
   const dialogueNpcs = useEditorStore((state) => state.dialogueNpcs);
   const messageDecals = useEditorStore((state) => state.messageDecals);
+  const scavengeDecals = useEditorStore((state) => state.scavengeDecals);
   const spawnerMeta = useEditorStore((state) => state.spawnerMeta);
   const merchantMeta = useEditorStore((state) => state.merchantMeta);
   const quests = useEditorStore((state) => state.quests);
@@ -133,6 +139,13 @@ function MapEditor() {
             n,
           ),
         );
+        setScavengeDecals(
+          reconcileScavengeDecalsWithDecalsLayer(
+            decalsLoaded,
+            worldMapData.scavengeDecals ?? [],
+            n,
+          ),
+        );
         useEditorStore.setState({
           merchantMeta: reconcileMerchantMetaWithMerchantTiles(
             decalsLoaded,
@@ -162,6 +175,7 @@ function MapEditor() {
     setDecalsGrid,
     setDialogueNpcs,
     setMessageDecals,
+    setScavengeDecals,
     setQuests,
     setSaveStatus,
     setHistory,
@@ -212,6 +226,7 @@ function MapEditor() {
         decals: decalsGrid,
         dialogueNpcs,
         messageDecals,
+        scavengeDecals,
         quests,
         spawnerMeta,
         merchantMeta,
@@ -264,17 +279,18 @@ function MapEditor() {
         <EditorMinimap />
       </div>
 
-      <div className="pointer-events-none fixed inset-0 z-40 flex justify-end">
-        <EditorRightOverlay
-          onSaveMap={saveMap}
-          saveStatus={saveStatus}
-          onTileSelect={handleTileSelect}
-        />
+      <div className="pointer-events-none fixed inset-0 z-40">
+        <EditorTopLeftToolbar onSaveMap={saveMap} saveStatus={saveStatus} />
+        <div className="flex h-full justify-end">
+          <EditorRightOverlay onTileSelect={handleTileSelect} />
+        </div>
       </div>
 
       <NpcConfigModal />
       <SpawnerMetaModal />
       <MerchantMetaModal />
+      <ScavengeDecalModal />
+      <MessageDecalModal />
       <RelocateMapBanner />
     </div>
   );

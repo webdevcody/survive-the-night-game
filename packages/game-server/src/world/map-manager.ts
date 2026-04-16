@@ -41,6 +41,7 @@ import { Locker } from "@/entities/environment/locker";
 import { AuctionHouse } from "@/entities/environment/auction-house";
 import { LightDecal } from "@/entities/environment/light-decal";
 import { MessageDecal } from "@/entities/environment/message-decal";
+import { ScavengeDecal } from "@/entities/environment/scavenge-decal";
 import { createSeededRng } from "@shared/util/seeded-rng";
 import { tryLoadWorldMapFile, validateWorldMapDimensions, type WorldMapFile } from "@/world/load-world-map";
 import {
@@ -55,6 +56,7 @@ import type {
   WorldMapDialogueNpcEntry,
   WorldMapMerchantEntry,
   WorldMapMessageDecalEntry,
+  WorldMapScavengeDecalEntry,
   WorldMapSpawnerMetaEntry,
 } from "../../../game-shared/src/map/world-map-types";
 import {
@@ -62,6 +64,7 @@ import {
   normalizeDialogueNpcs,
   reconcileMerchantMetaWithMerchantTiles,
   reconcileMessageDecalsWithDecalsLayer,
+  reconcileScavengeDecalsWithDecalsLayer,
   reconcileSpawnerMetaWithSpawnsLayer,
   rewriteSpawnsLayerDialogueNpcTiles,
 } from "../../../game-shared/src/map/world-map-types";
@@ -77,6 +80,7 @@ import {
   DECAL_TILE_LOCKER,
   DECAL_TILE_SHOPKEEPER,
   DECAL_TILE_AUCTION_HOUSE,
+  DECAL_TILE_SCAVENGE,
 } from "../../../game-shared/src/map/decal-palette";
 import { COLLIDABLE_TILE_MERCHANT } from "../../../game-shared/src/map/collidable-tile-ids";
 import {
@@ -152,6 +156,8 @@ export class MapManager implements IMapManager {
   private authoredDialogueNpcs: WorldMapDialogueNpcEntry[] = [];
   /** Message decal entries aligned with `DECAL_TILE_MESSAGE` cells on the decals layer. */
   private authoredMessageDecals: WorldMapMessageDecalEntry[] = [];
+  /** Scavenge pile entries aligned with `DECAL_TILE_SCAVENGE` cells on the decals layer. */
+  private authoredScavengeDecals: WorldMapScavengeDecalEntry[] = [];
   /** Spawner labels + optional respawn overrides (reconciled to non-dialogue spawns layer cells). */
   private authoredSpawnerMeta: WorldMapSpawnerMetaEntry[] = [];
   /** Merchant stock overrides aligned to shopkeeper decals + merchant collidables. */
@@ -439,6 +445,7 @@ export class MapManager implements IMapManager {
 
       this.spawnLightDecalEntitiesFromDecalsLayer();
       this.spawnMessageDecalEntitiesFromDecalsLayer();
+      this.spawnScavengeDecalEntitiesFromDecalsLayer();
 
       this.createForestBoundaries();
       this.spawnMerchants();
@@ -483,6 +490,7 @@ export class MapManager implements IMapManager {
       .map(() => Array(totalSize).fill(0));
     this.authoredDialogueNpcs = [];
     this.authoredMessageDecals = [];
+    this.authoredScavengeDecals = [];
     this.authoredSpawnerMeta = [];
     this.authoredMerchantMeta = [];
     this.authoredQuests = [];
@@ -558,6 +566,11 @@ export class MapManager implements IMapManager {
     this.authoredMessageDecals = reconcileMessageDecalsWithDecalsLayer(
       this.decalsLayer,
       data.messageDecals,
+      n,
+    );
+    this.authoredScavengeDecals = reconcileScavengeDecalsWithDecalsLayer(
+      this.decalsLayer,
+      data.scavengeDecals,
       n,
     );
     this.authoredQuests = normalizeQuests(data.quests, n);
@@ -801,6 +814,24 @@ export class MapManager implements IMapManager {
         const lines = getMessageDecalLines(entry ?? fallback);
         const decal = new MessageDecal(this.getGameManagers(), lines, x, y);
         this.getEntityManager().addEntity(decal);
+      }
+    }
+  }
+
+  private spawnScavengeDecalEntitiesFromDecalsLayer(): void {
+    const byKey = new Map<string, WorldMapScavengeDecalEntry>();
+    for (const e of this.authoredScavengeDecals) {
+      byKey.set(`${e.row},${e.col}`, e);
+    }
+    const n = BIOME_SIZE * MAP_SIZE;
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        if (this.decalsLayer[y]?.[x] !== DECAL_TILE_SCAVENGE) {
+          continue;
+        }
+        const entry = byKey.get(`${y},${x}`) ?? { row: y, col: x };
+        const pile = new ScavengeDecal(this.getGameManagers(), entry, x, y);
+        this.getEntityManager().addEntity(pile);
       }
     }
   }

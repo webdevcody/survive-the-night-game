@@ -92,7 +92,8 @@ export function entityBlocksPlacement(entityType: string): boolean {
     entityType === "zombie_spawn_point" ||
     entityType === "item_spawn_point" ||
     entityType === "light_decal" ||
-    entityType === "message_decal"
+    entityType === "message_decal" ||
+    entityType === "scavenge_decal"
   ) {
     return false;
   }

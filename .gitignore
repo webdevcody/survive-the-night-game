@@ -6,3 +6,4 @@ scratch.txt
 tmp/
 dependency-graph.svg
 .env
+.venv-sprite/

@@ -26,6 +26,7 @@ import {
 import { Button } from "~/components/ui/button";
 import { ComboboxTypeahead } from "~/components/ui/combobox-typeahead";
 import { Input } from "~/components/ui/input";
+import { WholeNumberInput } from "~/components/ui/whole-number-input";
 import { cn } from "~/lib/utils";
 import { useEditorStore } from "../-store";
 import type {
@@ -458,7 +459,7 @@ export function QuestsEditorPanel() {
       <div className="rounded border border-gray-600/80 bg-gray-950/50 px-2 py-2">
         <p className="text-[11px] font-medium text-gray-200">Quest definitions</p>
         <p className="mt-0.5 text-[10px] leading-snug text-gray-500">
-          Saved with the world map when you use Save under Map file. Drag the left grip to reorder
+          Saved with the world map when you use Save (top-left toolbar). Drag the left grip to reorder
           quests; order is only for the editor list (quests are identified by id in-game).
         </p>
       </div>
@@ -642,64 +643,34 @@ export function QuestsEditorPanel() {
                                         {s.type === "reach_waypoint" ? (
                                           <div className="space-y-1">
                                             <div className="flex flex-wrap items-center gap-1">
-                                              <input
-                                                type="number"
-                                                className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                              <WholeNumberInput
                                                 min={0}
                                                 max={mapSide - 1}
+                                                className="w-16 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
                                                 aria-label="Waypoint row"
                                                 value={s.row}
-                                                onChange={(e) =>
-                                                  updateStep(q.id, i, {
-                                                    ...s,
-                                                    row: Math.max(
-                                                      0,
-                                                      Math.min(
-                                                        mapSide - 1,
-                                                        parseInt(e.target.value, 10) || 0,
-                                                      ),
-                                                    ),
-                                                  })
+                                                onValueChange={(row) =>
+                                                  updateStep(q.id, i, { ...s, row })
                                                 }
                                               />
-                                              <input
-                                                type="number"
-                                                className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                              <WholeNumberInput
                                                 min={0}
                                                 max={mapSide - 1}
+                                                className="w-16 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
                                                 aria-label="Waypoint column"
                                                 value={s.col}
-                                                onChange={(e) =>
-                                                  updateStep(q.id, i, {
-                                                    ...s,
-                                                    col: Math.max(
-                                                      0,
-                                                      Math.min(
-                                                        mapSide - 1,
-                                                        parseInt(e.target.value, 10) || 0,
-                                                      ),
-                                                    ),
-                                                  })
+                                                onValueChange={(col) =>
+                                                  updateStep(q.id, i, { ...s, col })
                                                 }
                                               />
-                                              <input
-                                                type="number"
-                                                className="w-14 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                                title="radius tiles"
+                                              <WholeNumberInput
                                                 min={1}
                                                 max={8}
+                                                className="w-14 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
+                                                title="radius tiles"
                                                 value={s.radiusTiles ?? 2}
-                                                onChange={(e) =>
-                                                  updateStep(q.id, i, {
-                                                    ...s,
-                                                    radiusTiles: Math.max(
-                                                      1,
-                                                      Math.min(
-                                                        8,
-                                                        parseInt(e.target.value, 10) || 2,
-                                                      ),
-                                                    ),
-                                                  })
+                                                onValueChange={(radiusTiles) =>
+                                                  updateStep(q.id, i, { ...s, radiusTiles })
                                                 }
                                               />
                                               {questWaypointPickTarget?.questId === q.id &&
@@ -749,24 +720,17 @@ export function QuestsEditorPanel() {
                                                 listClassName="max-h-48"
                                               />
                                             </div>
-                                            <input
-                                              type="number"
-                                              className="w-16 rounded border border-gray-600 bg-gray-900 text-[10px]"
-                                              title="Kill count"
+                                            <WholeNumberInput
                                               min={1}
                                               max={QUEST_KILL_ENEMIES_COUNT_MAX}
+                                              className="w-16 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
+                                              title="Kill count"
                                               value={s.count}
-                                              onChange={(e) =>
+                                              onValueChange={(count) =>
                                                 updateStep(q.id, i, {
                                                   type: "kill_enemies",
                                                   enemyType: s.enemyType,
-                                                  count: Math.max(
-                                                    1,
-                                                    Math.min(
-                                                      QUEST_KILL_ENEMIES_COUNT_MAX,
-                                                      parseInt(e.target.value, 10) || 1,
-                                                    ),
-                                                  ),
+                                                  count,
                                                 })
                                               }
                                             />
@@ -881,20 +845,16 @@ export function QuestsEditorPanel() {
                                           placeholder="Stat…"
                                           listClassName="max-h-48"
                                         />
-                                        <input
-                                          type="number"
-                                          className="w-12 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                        <WholeNumberInput
                                           min={1}
                                           max={99}
+                                          className="w-12 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
                                           value={r.amount}
-                                          onChange={(e) =>
+                                          onValueChange={(amount) =>
                                             updateReward(q.id, listKey, i, {
                                               type: "permanent_stat",
                                               stat: r.stat,
-                                              amount: Math.max(
-                                                1,
-                                                Math.min(99, parseInt(e.target.value, 10) || 1),
-                                              ),
+                                              amount,
                                             })
                                           }
                                         />
@@ -902,22 +862,15 @@ export function QuestsEditorPanel() {
                                     ) : r.type === "experience" ? (
                                       <>
                                         <span className="text-[10px] text-gray-400">XP</span>
-                                        <input
-                                          type="number"
-                                          className="w-20 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                        <WholeNumberInput
                                           min={1}
                                           max={1_000_000}
+                                          className="w-20 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
                                           value={r.amount}
-                                          onChange={(e) =>
+                                          onValueChange={(amount) =>
                                             updateReward(q.id, listKey, i, {
                                               type: "experience",
-                                              amount: Math.max(
-                                                1,
-                                                Math.min(
-                                                  1_000_000,
-                                                  parseInt(e.target.value, 10) || 1,
-                                                ),
-                                              ),
+                                              amount,
                                             })
                                           }
                                         />
@@ -938,20 +891,16 @@ export function QuestsEditorPanel() {
                                           placeholder="Item…"
                                           listClassName="max-h-48"
                                         />
-                                        <input
-                                          type="number"
-                                          className="w-10 rounded border border-gray-600 bg-gray-900 text-[10px]"
+                                        <WholeNumberInput
                                           min={1}
                                           max={99}
+                                          className="w-10 rounded border border-gray-600 bg-gray-900 px-1 text-[10px] text-gray-100"
                                           value={r.count}
-                                          onChange={(e) =>
+                                          onValueChange={(count) =>
                                             updateReward(q.id, listKey, i, {
                                               type: "item",
                                               itemType: r.itemType,
-                                              count: Math.max(
-                                                1,
-                                                Math.min(99, parseInt(e.target.value, 10) || 1),
-                                              ),
+                                              count,
                                             })
                                           }
                                         />

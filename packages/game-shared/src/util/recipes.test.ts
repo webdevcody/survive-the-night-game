@@ -13,6 +13,8 @@ describe("recipes", () => {
     const workbenchRecipes = getRecipesForStation("workbench").map((recipe) => recipe.id);
     expect(workbenchRecipes).toContain("torch");
     expect(workbenchRecipes).toContain("cloth_hood");
+    expect(workbenchRecipes).toContain("leather");
+    expect(workbenchRecipes).toContain("leather_cap");
     expect(workbenchRecipes).toContain("scrap_metal_bundle");
     expect(workbenchRecipes).toContain("skateboard");
 
@@ -51,6 +53,10 @@ describe("recipes", () => {
       { type: "electronics", count: 1 },
     ]);
     expect(getScrapOutputsForItem("cloth_hood")?.components).toEqual([
+      { type: "cloth", count: 1 },
+      { type: "leather_strips", count: 1 },
+    ]);
+    expect(getScrapOutputsForItem("leather_jerkin")?.components).toEqual([
       { type: "cloth", count: 1 },
       { type: "leather_strips", count: 1 },
     ]);

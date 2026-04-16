@@ -39,6 +39,7 @@ import { PlayerLevelUpEvent } from "../../../game-shared/src/events/server-sent/
 import { AuctionSnapshotEvent } from "../../../game-shared/src/events/server-sent/events/auction-snapshot-event";
 import { DuplicateActiveSessionEvent } from "../../../game-shared/src/events/server-sent/events/duplicate-active-session-event";
 import { SessionIdleTimeoutEvent } from "../../../game-shared/src/events/server-sent/events/session-idle-timeout-event";
+import { PlayerEvadedEvent } from "../../../game-shared/src/events/server-sent/events/player-evaded-event";
 import { UserBannedEvent } from "../../../game-shared/src/events/server-sent/events/user-banned-event";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { IClientAdapter } from "@shared/network/client-adapter";
@@ -96,6 +97,7 @@ const SERVER_EVENT_MAP = {
   [ServerSentEvents.AUCTION_SNAPSHOT]: AuctionSnapshotEvent,
   [ServerSentEvents.DUPLICATE_ACTIVE_SESSION]: DuplicateActiveSessionEvent,
   [ServerSentEvents.SESSION_IDLE_TIMEOUT]: SessionIdleTimeoutEvent,
+  [ServerSentEvents.PLAYER_EVADED]: PlayerEvadedEvent,
 } as const;
 
 export class ClientSocketManager {

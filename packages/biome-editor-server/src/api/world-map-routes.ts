@@ -47,9 +47,12 @@ router.post("/world-map", async (req: Request, res: Response) => {
     }
     const savedPaths = await writeWorldMap({
       ...body,
-      dialogueNpcs: body.dialogueNpcs,
-      quests: body.quests,
-      spawnerMeta: body.spawnerMeta,
+      dialogueNpcs: body.dialogueNpcs ?? [],
+      messageDecals: body.messageDecals ?? [],
+      scavengeDecals: body.scavengeDecals ?? [],
+      quests: body.quests ?? [],
+      spawnerMeta: body.spawnerMeta ?? [],
+      merchantMeta: body.merchantMeta ?? [],
     });
     const gameServerReload = await notifyGameServerMapReload();
     res.json({

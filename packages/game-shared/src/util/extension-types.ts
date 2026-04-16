@@ -25,6 +25,7 @@ export const ExtensionTypes = {
   ACID_TRIGGER: "acid-trigger",
   INFINITE_RUN: "infinite-run",
   BANK: "bank",
+  HOLD_INTERACT: "hold-interact",
 } as const;
 
 export type ExtensionType = (typeof ExtensionTypes)[keyof typeof ExtensionTypes];
