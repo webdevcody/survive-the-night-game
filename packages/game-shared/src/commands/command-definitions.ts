@@ -44,4 +44,11 @@ export const COMMAND_DEFINITIONS: CommandDefinition[] = [
     usage: "/list",
     requiresAdmin: true,
   },
+  {
+    name: "teleport",
+    description: "Teleports you to the tile west of a dialogue NPC by name",
+    usage: "/teleport <npc_name>",
+    requiresAdmin: true,
+    arguments: [{ name: "npc_name", type: "string", required: true }],
+  },
 ];

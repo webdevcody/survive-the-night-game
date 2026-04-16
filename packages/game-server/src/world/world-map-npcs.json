@@ -1,6 +1,41 @@
 {
   "dialogueNpcs": [
     {
+      "row": 38,
+      "col": 90,
+      "dialogueSessions": [
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          },
+          "lines": [
+            "I heard you were coming! I'm glad to have another set of eyes round here.",
+            "I'd recommend finding supplies and learning how to kill the undead.  It's just going to get worst."
+          ],
+          "completeQuestId": "quest_1776310554860"
+        },
+        {
+          "when": {
+            "type": "always"
+          },
+          "lines": [
+            "I see you've been working hard..."
+          ]
+        }
+      ],
+      "lines": [
+        "I see you've been working hard..."
+      ],
+      "message": "I see you've been working hard...",
+      "name": "Ollie"
+    },
+    {
       "row": 49,
       "col": 103,
       "dialogueSessions": [
@@ -74,18 +109,52 @@
         },
         {
           "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          },
+          "lines": [
+            "If I were you, I'd try to make it out of this area.  Every day they grow in numbers.",
+            "Go find my neighbor Ollie is to the north west.  I've been talking to him over the radio and he says his encampment is safe.",
+            "Farewell and good luck."
+          ],
+          "grantQuestId": "quest_1776310554860"
+        },
+        {
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          },
+          "lines": [
+            "Go on, Ollie is waiting for you!"
+          ]
+        },
+        {
+          "when": {
             "type": "always"
           },
           "lines": [
-            "Thanks again kind stranger."
+            "30 years of hard work building this farm just to see it waste away..."
           ]
         }
       ],
       "lines": [
-        "Thanks again kind stranger."
+        "If I were you, I'd try to make it out of this area.  Every day they grow in numbers.",
+        "Go find my neighbor Ollie is to the north west.  I've been talking to him over the radio and he says his encampment is safe.",
+        "Farewell and good luck."
       ],
-      "message": "Thanks again kind stranger.",
-      "name": "George"
+      "message": "If I were you, I'd try to make it out of this area.  Every day they grow in numbers.",
+      "name": "George",
+      "grantQuestId": "quest_1776310554860"
     },
     {
       "row": 126,

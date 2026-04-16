@@ -90,6 +90,7 @@ import { renderUnspentProgressionBadge } from "./minimap-inventory-menu";
 import { getQuestObjectiveLine } from "./quest-display";
 import { SignTextModal } from "./sign-modals";
 import { getSignInventoryDisplayName } from "@shared/util/sign-message";
+import { getItemKindLabel } from "@shared/util/item-kind-label";
 import {
   PROFESSION_DEFINITIONS,
   PROFESSION_IDS,
@@ -2758,6 +2759,7 @@ export class InventoryScreenUI {
 
     const name =
       getSignInventoryDisplayName(hovered) ?? formatDisplayName(hovered.itemType);
+    const kindLine = getItemKindLabel(hovered.itemType);
     const stackKg =
       getItemWeightKg(hovered.itemType) * (hovered.state?.count ?? 1);
     const weightLine = `${stackKg.toFixed(1)} kg`;
@@ -2767,12 +2769,13 @@ export class InventoryScreenUI {
     const priceLine = auctionPriceLine ?? "";
     const wName = ctx.measureText(name).width;
     ctx.font = "14px Arial";
+    const wKind = ctx.measureText(kindLine).width;
     const wWeight = ctx.measureText(weightLine).width;
     const wPrice = priceLine ? ctx.measureText(priceLine).width : 0;
 
     const pad = 8;
-    const bw = Math.max(wName, wWeight, wPrice) + pad * 2;
-    const bh = 44 + (priceLine ? 18 : 0);
+    const bw = Math.max(wName, wKind, wWeight, wPrice) + pad * 2;
+    const bh = 60 + (priceLine ? 18 : 0);
     const bx = this._mx - bw / 2;
     const by = this._my - bh - 10;
 
@@ -2787,10 +2790,11 @@ export class InventoryScreenUI {
     ctx.fillText(name, this._mx, by + 20);
     ctx.font = "14px Arial";
     ctx.fillStyle = RPG_METADATA_MUTED;
-    ctx.fillText(weightLine, this._mx, by + 36);
+    ctx.fillText(kindLine, this._mx, by + 36);
+    ctx.fillText(weightLine, this._mx, by + 52);
     if (priceLine) {
       ctx.fillStyle = RPG_COUNTER_GOLD;
-      ctx.fillText(priceLine, this._mx, by + 54);
+      ctx.fillText(priceLine, this._mx, by + 70);
     }
   }
 

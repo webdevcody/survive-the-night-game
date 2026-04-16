@@ -144,9 +144,58 @@
         }
       ],
       "completionType": "dialogue_npc"
+    },
+    {
+      "id": "quest_1776310554860",
+      "title": "To Greener Pastures",
+      "steps": [
+        {
+          "type": "talk_to_npc",
+          "npcName": "Ollie",
+          "npcKey": "38,90"
+        }
+      ],
+      "rewards": [
+        {
+          "type": "item",
+          "itemType": "throwing_knife",
+          "count": 5
+        }
+      ],
+      "startRewards": []
     }
   ],
   "dialogueNpcEditorMetadata": [
+    {
+      "row": 38,
+      "col": 90,
+      "editorDialogueSessions": [
+        {
+          "lines": [
+            "I heard you were coming! I'm glad to have another set of eyes round here.",
+            "I'd recommend finding supplies and learning how to kill the undead.  It's just going to get worst."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          },
+          "completeQuestId": "quest_1776310554860"
+        },
+        {
+          "lines": [
+            "I see you've been working hard..."
+          ],
+          "when": {
+            "type": "always"
+          }
+        }
+      ]
+    },
     {
       "row": 49,
       "col": 103,
@@ -216,7 +265,38 @@
         },
         {
           "lines": [
-            "Thanks again kind stranger."
+            "If I were you, I'd try to make it out of this area.  Every day they grow in numbers.",
+            "Go find my neighbor Ollie is to the north west.  I've been talking to him over the radio and he says his encampment is safe.",
+            "Farewell and good luck."
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_not_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          },
+          "grantQuestId": "quest_1776310554860"
+        },
+        {
+          "lines": [
+            "Go on, Ollie is waiting for you!"
+          ],
+          "when": {
+            "type": "all",
+            "conditions": [
+              {
+                "type": "quest_active",
+                "questId": "quest_1776310554860"
+              }
+            ]
+          }
+        },
+        {
+          "lines": [
+            "30 years of hard work building this farm just to see it waste away..."
           ],
           "when": {
             "type": "always"
