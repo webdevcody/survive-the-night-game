@@ -3,6 +3,7 @@ import { Button } from "~/components/ui/button";
 export type RegistryWorldRow = {
   id: number;
   displayName: string | null;
+  region?: string | null;
   publicWsUrl: string;
 };
 
@@ -71,30 +72,43 @@ export function WorldPickerPanel({
             const pingLabel = ping != null ? `${ping} ms` : "—";
             const players = playerCounts[w.id];
             const playersLabel = players != null ? String(players) : "—";
+            const regionLabel = w.region?.trim() ?? "";
             return (
               <li
                 key={w.id}
                 className="flex flex-col gap-2 rounded-lg border border-border bg-card/50 px-4 py-3 shadow-lg shadow-black/40 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="min-w-0 text-left">
-                  <div className="font-medium">{label}</div>
-                  <div className="truncate text-muted-foreground text-xs">{w.publicWsUrl}</div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                    {ping != null ? (
-                      <span
-                        className={`inline-block size-2 shrink-0 rounded-full shadow-sm ${pingLatencyDotClass(ping)}`}
-                        title={`Latency ${ping} ms`}
-                        aria-hidden
-                      />
-                    ) : (
-                      <span
-                        className="inline-block size-2 shrink-0 rounded-full bg-muted-foreground/30"
-                        aria-hidden
-                      />
-                    )}
-                    <span>
-                      Ping: {pingLabel} · Players online: {playersLabel}
+                <div className="min-w-0 flex flex-1 flex-col gap-1.5 text-left">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="min-w-0 font-medium">{label}</span>
+                    <span className="flex flex-wrap items-center gap-x-2 text-muted-foreground text-xs">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        {ping != null ? (
+                          <span
+                            className={`inline-block size-2 shrink-0 rounded-full shadow-sm ${pingLatencyDotClass(ping)}`}
+                            title={`Latency ${ping} ms`}
+                            aria-hidden
+                          />
+                        ) : (
+                          <span
+                            className="inline-block size-2 shrink-0 rounded-full bg-muted-foreground/30"
+                            aria-hidden
+                          />
+                        )}
+                        <span className="truncate">Ping: {pingLabel}</span>
+                      </span>
+                      {regionLabel ? (
+                        <>
+                          <span className="text-muted-foreground/45" aria-hidden>
+                            ·
+                          </span>
+                          <span className="shrink-0">{regionLabel}</span>
+                        </>
+                      ) : null}
                     </span>
+                  </div>
+                  <div className="text-left text-base font-medium leading-tight text-muted-foreground">
+                    <span className="tabular-nums">{playersLabel}</span> Players online
                   </div>
                 </div>
                 <Button

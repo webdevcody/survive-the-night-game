@@ -9,6 +9,7 @@ export type UpsertGameServerInput = {
   id: number;
   publicWsUrl: string;
   displayName?: string | null;
+  region?: string | null;
   listenPort?: number | null;
 };
 
@@ -20,6 +21,7 @@ export async function upsertGameServerRegistration(input: UpsertGameServerInput)
       id: input.id,
       publicWsUrl: input.publicWsUrl,
       displayName: input.displayName ?? null,
+      region: input.region ?? null,
       listenPort: input.listenPort ?? null,
       lastSeenAt: now,
       createdAt: now,
@@ -30,6 +32,7 @@ export async function upsertGameServerRegistration(input: UpsertGameServerInput)
       set: {
         publicWsUrl: input.publicWsUrl,
         displayName: input.displayName ?? null,
+        region: input.region ?? null,
         listenPort: input.listenPort ?? null,
         lastSeenAt: now,
         updatedAt: now,
@@ -50,6 +53,7 @@ export async function touchGameServerRegistryHeartbeat(id: number): Promise<bool
 export type PublicGameServerDto = {
   id: number;
   displayName: string | null;
+  region: string | null;
   publicWsUrl: string;
   lastSeenAt: string;
 };
@@ -69,6 +73,7 @@ export async function listFreshGameServersForPublic(): Promise<PublicGameServerD
       .select({
         id: gameServer.id,
         displayName: gameServer.displayName,
+        region: gameServer.region,
         publicWsUrl: gameServer.publicWsUrl,
         lastSeenAt: gameServer.lastSeenAt,
       })
@@ -78,6 +83,7 @@ export async function listFreshGameServersForPublic(): Promise<PublicGameServerD
     return rows.map((r) => ({
       id: r.id,
       displayName: r.displayName,
+      region: r.region,
       publicWsUrl: r.publicWsUrl,
       lastSeenAt: r.lastSeenAt.toISOString(),
     }));

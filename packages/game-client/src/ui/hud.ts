@@ -677,13 +677,13 @@ export class Hud {
       ctx.restore();
     }
 
-    // Top-left: mute + players (same row as exit); chat toggle sits under exit (see ChatWidget)
+    // Top-left: mute + players (same row as exit); chat column aligns under exit (see ChatWidget)
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const exitAnchor = this.computeExitAnchorLayout(width, height);
     this.muteButtonPanel.updatePosition(width, height, exitAnchor);
     this.playersOnlinePanel.updatePosition(width, height, this.muteButtonPanel.getLayout());
-    this.chatWidget.setExitAnchoredToggle(exitAnchor, width, height);
+    this.chatWidget.setExitAnchoredChatColumn(exitAnchor, width, height);
     this.muteButtonPanel.render(ctx, gameState);
     this.playersOnlinePanel.render(ctx, gameState);
     ctx.restore();
@@ -758,14 +758,6 @@ export class Hud {
   // Delegate chat methods to ChatWidget
   public toggleChatInput(): void {
     this.chatWidget.toggleChatInput();
-  }
-
-  public toggleChatPanel(): void {
-    this.chatWidget.toggleChatPanel();
-  }
-
-  public isChatPanelOpen(): boolean {
-    return this.chatWidget.isChatPanelOpen();
   }
 
   public isChatComposing(): boolean {
@@ -909,7 +901,7 @@ export class Hud {
     const y = (event.clientY - rect.top) * scaleY;
     const exitAnchor = this.computeExitAnchorLayout(canvas.width, canvas.height);
     this.muteButtonPanel.updatePosition(canvas.width, canvas.height, exitAnchor);
-    this.chatWidget.setExitAnchoredToggle(exitAnchor, canvas.width, canvas.height);
+    this.chatWidget.setExitAnchoredChatColumn(exitAnchor, canvas.width, canvas.height);
     return this.chatWidget.handleWheel(x, y, event.deltaY, canvas.width, canvas.height);
   }
 
@@ -932,8 +924,8 @@ export class Hud {
     }
     const exitAnchor = this.computeExitAnchorLayout(canvasWidth, canvasHeight);
     this.muteButtonPanel.updatePosition(canvasWidth, canvasHeight, exitAnchor);
-    this.chatWidget.setExitAnchoredToggle(exitAnchor, canvasWidth, canvasHeight);
-    if (this.chatWidget.handleToggleButtonClick(x, y, canvasHeight)) {
+    this.chatWidget.setExitAnchoredChatColumn(exitAnchor, canvasWidth, canvasHeight);
+    if (this.chatWidget.handleChatPanelVisibilityClick(x, y)) {
       return true;
     }
     if (this.currentGameState) {

@@ -15,18 +15,19 @@ const CHAT_META_LINE_HEIGHT = 15;
 const CHAT_BODY_LINE_HEIGHT = 20;
 /** Shared width for message viewport + input + autocomplete (matches HUD flat panel chrome). */
 const CHAT_PANEL_MAX_WIDTH = 300;
-const CHAT_INPUT_PLACEHOLDER = "Press Y to start typing your message";
+const CHAT_INPUT_PLACEHOLDER = "Press Y to chat";
 const CHAT_LEFT_MARGIN = 12;
 /** Top inset so the chat column clears the top HUD when the toggle is unusually low. */
 const CHAT_COLUMN_MIN_TOP = 48;
-/** Space between the open-chat toggle (below) and the message column (below that). */
-const CHAT_COLUMN_GAP_BELOW_TOGGLE = 8;
-const CHAT_TOGGLE_BTN = { w: 148, h: 32 } as const;
-/** Gap between exit button bottom and chat toggle top (base px, scaled). */
-const CHAT_TOGGLE_GAP_BELOW_EXIT = 8;
+/** Gap between exit button bottom and chat hide button top (base px, scaled). */
+const CHAT_COLUMN_GAP_BELOW_EXIT = 8;
+/** Square chat visibility control (base px, scaled). */
+const CHAT_HIDE_BUTTON_BASE = 40;
+/** Gap between hide button bottom and message column band (base px, scaled). */
+const CHAT_COLUMN_GAP_BELOW_HIDE_BTN = 8;
 /** Keep the chat stack above bottom HUD (loadout / orbs). Base px, scaled. */
 const CHAT_BAND_BOTTOM_RESERVE = 110;
-/** Fixed-height message list when the chat panel is open; content scrolls inside. */
+/** Fixed-height message list; content scrolls inside. */
 const CHAT_MESSAGES_VIEWPORT_HEIGHT = 220;
 /** Cap stored chat lines so memory stays bounded. */
 const MAX_STORED_CHAT_MESSAGES = 400;
@@ -41,17 +42,18 @@ interface ChatMessage {
 export class ChatWidget {
   /** Y-activated typing mode; movement suppression follows this. */
   private showChatInput: boolean = false;
-  /** Tab-toggled message list + input chrome; default closed. */
-  private chatPanelOpen: boolean = false;
-  private layoutCanvasW: number = 0;
-  private layoutCanvasH: number = 0;
-  private toggleLayout: { x: number; y: number; w: number; h: number } = {
+  /** When false, messages + input are hidden; icon button remains. */
+  private chatPanelVisible: boolean = true;
+  /** Hit target for chat visibility toggle (screen px). */
+  private chatHideButtonLayout: { x: number; y: number; w: number; h: number } = {
     x: CHAT_LEFT_MARGIN,
     y: CHAT_COLUMN_MIN_TOP,
-    w: CHAT_TOGGLE_BTN.w,
-    h: CHAT_TOGGLE_BTN.h,
+    w: CHAT_HIDE_BUTTON_BASE,
+    h: CHAT_HIDE_BUTTON_BASE,
   };
-  /** Message column X; matches exit / toggle left when anchored. */
+  /** Y below hide button where the chat column may begin (before MIN_TOP clamp). */
+  private chatBandTopAnchorY: number = CHAT_COLUMN_MIN_TOP;
+  /** Message column X; matches exit when anchored. */
   private chatColumnLeft: number = CHAT_LEFT_MARGIN;
   private chatInput: string = "";
   private chatMessages: ChatMessage[] = [];
@@ -72,36 +74,52 @@ export class ChatWidget {
   }
 
   /**
-   * Place the chat toggle directly under the exit button; message column aligns to the same X.
+   * Align chat column with exit; vertical band starts below exit (same X as before when a toggle sat there).
    */
-  public setExitAnchoredToggle(
+  public setExitAnchoredChatColumn(
     exitLayout: { left: number; top: number; width: number; height: number },
     canvasWidth: number,
     canvasHeight: number
   ): void {
-    this.layoutCanvasW = canvasWidth;
-    this.layoutCanvasH = canvasHeight;
-    const gap = scaleHudValue(CHAT_TOGGLE_GAP_BELOW_EXIT, canvasWidth, canvasHeight);
-    const w = scaleHudValue(CHAT_TOGGLE_BTN.w, canvasWidth, canvasHeight);
-    const h = scaleHudValue(CHAT_TOGGLE_BTN.h, canvasWidth, canvasHeight);
-    this.toggleLayout = {
+    const gap = scaleHudValue(CHAT_COLUMN_GAP_BELOW_EXIT, canvasWidth, canvasHeight);
+    const btnSize = scaleHudValue(CHAT_HIDE_BUTTON_BASE, canvasWidth, canvasHeight);
+    const y = exitLayout.top + exitLayout.height + gap;
+    this.chatHideButtonLayout = {
       x: exitLayout.left,
-      y: exitLayout.top + exitLayout.height + gap,
-      w,
-      h,
+      y,
+      w: btnSize,
+      h: btnSize,
     };
+    const gapBelowBtn = scaleHudValue(CHAT_COLUMN_GAP_BELOW_HIDE_BTN, canvasWidth, canvasHeight);
+    this.chatBandTopAnchorY = y + btnSize + gapBelowBtn;
     this.chatColumnLeft = exitLayout.left;
   }
 
-  public isChatPanelOpen(): boolean {
-    return this.chatPanelOpen;
+  /**
+   * Chat icon control (under exit): returns true if the click was consumed.
+   */
+  public handleChatPanelVisibilityClick(x: number, y: number): boolean {
+    const b = this.chatHideButtonLayout;
+    if (x < b.x || x > b.x + b.w || y < b.y || y > b.y + b.h) {
+      return false;
+    }
+    this.chatPanelVisible = !this.chatPanelVisible;
+    if (!this.chatPanelVisible) {
+      this.showChatInput = false;
+      this.chatInput = "";
+      this.autocomplete.reset();
+      this.historyIndex = -1;
+    } else {
+      this.chatStickToBottom = true;
+    }
+    return true;
   }
 
   public isChatComposing(): boolean {
     return this.showChatInput;
   }
 
-  /** Exit typing mode after a successful send; keeps the panel open. */
+  /** Exit typing mode after a successful send. */
   public endChatComposition(): void {
     this.showChatInput = false;
     this.chatInput = "";
@@ -115,32 +133,9 @@ export class ChatWidget {
       this.chatInput = "";
       this.autocomplete.reset();
     } else {
-      this.chatPanelOpen = true;
+      this.chatPanelVisible = true;
       this.historyIndex = -1;
     }
-  }
-
-  public toggleChatPanel(): void {
-    this.chatPanelOpen = !this.chatPanelOpen;
-    if (!this.chatPanelOpen) {
-      this.showChatInput = false;
-      this.chatInput = "";
-      this.autocomplete.reset();
-    } else {
-      this.chatStickToBottom = true;
-    }
-  }
-
-  /**
-   * Bottom-left toggle: returns true if the click was consumed.
-   */
-  public handleToggleButtonClick(x: number, y: number, _canvasHeight: number): boolean {
-    const b = this.getToggleButtonRect();
-    if (x < b.x || x > b.x + b.w || y < b.y || y > b.y + b.h) {
-      return false;
-    }
-    this.toggleChatPanel();
-    return true;
   }
 
   public updateChatInput(key: string, shiftKey: boolean = false): void {
@@ -241,8 +236,8 @@ export class ChatWidget {
   }
 
   public render(ctx: CanvasRenderingContext2D, gameState: GameState): void {
-    this.renderChatToggleButton(ctx);
-    if (!this.chatPanelOpen) {
+    this.renderChatHideButton(ctx);
+    if (!this.chatPanelVisible) {
       return;
     }
     this.renderChatMessages(ctx, gameState);
@@ -258,7 +253,7 @@ export class ChatWidget {
    * Stacks message viewport (height `msgH`) + input (`CHAT_INPUT_HEIGHT`) with no gap.
    * Vertical position: center that combined block on the **canvas** at
    * `(canvasHeight - combinedH) / 2`, then clamp so the column stays at or below
-   * `CHAT_COLUMN_MIN_TOP` and entirely above the hide-chat control (see `bandBottom`).
+   * `CHAT_COLUMN_MIN_TOP` / below the exit anchor and entirely above the bottom HUD reserve.
    * (Centering only inside the band skews upward because the band ends well above the canvas midpoint.)
    */
   private getChatColumnLayout(canvasWidth: number, canvasHeight: number): {
@@ -266,12 +261,7 @@ export class ChatWidget {
     panelH: number;
     inputTopY: number;
   } {
-    const { y: toggleTopY, h: toggleH } = this.toggleLayout;
-    const toggleBottomY = toggleTopY + toggleH;
-    const bandTop = Math.max(
-      CHAT_COLUMN_MIN_TOP,
-      toggleBottomY + CHAT_COLUMN_GAP_BELOW_TOGGLE
-    );
+    const bandTop = Math.max(CHAT_COLUMN_MIN_TOP, this.chatBandTopAnchorY);
     const bandBottom =
       canvasHeight - scaleHudValue(CHAT_BAND_BOTTOM_RESERVE, canvasWidth, canvasHeight);
     const bandH = Math.max(0, bandBottom - bandTop);
@@ -294,13 +284,13 @@ export class ChatWidget {
   }
 
   /**
-   * Screen rect for the scrollable message viewport (when the chat panel is open).
+   * Screen rect for the scrollable message viewport.
    */
   public getMessagesPanelLayout(
     _canvasWidth: number,
     canvasHeight: number
   ): { x: number; y: number; w: number; h: number } | null {
-    if (!this.chatPanelOpen) {
+    if (!this.chatPanelVisible) {
       return null;
     }
     const w = CHAT_PANEL_MAX_WIDTH;
@@ -334,22 +324,39 @@ export class ChatWidget {
     return true;
   }
 
-  private getToggleButtonRect(): { x: number; y: number; w: number; h: number } {
-    return { ...this.toggleLayout };
-  }
-
-  private renderChatToggleButton(ctx: CanvasRenderingContext2D): void {
-    const { x, y, w, h } = this.getToggleButtonRect();
+  private renderChatHideButton(ctx: CanvasRenderingContext2D): void {
+    const { x, y, w, h } = this.chatHideButtonLayout;
     const { width: cw, height: ch } = ctx.canvas;
     drawHudFlatPanel(ctx, x, y, w, h, cw, ch);
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const d = Math.min(w, h);
     ctx.save();
-    ctx.font = `12px ${CHAT_FONT_FAMILY}`;
-    ctx.fillStyle = RPG_TITLE_CREAM;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    const label = this.chatPanelOpen ? "Hide chat (Tab)" : "Open chat (Tab)";
-    ctx.fillText(label, x + w / 2, y + h / 2);
+    if (!this.chatPanelVisible) {
+      ctx.globalAlpha = 0.5;
+    }
+    this.drawChatBubbleIcon(ctx, cx, cy, d * 0.72);
     ctx.restore();
+  }
+
+  /** Simple speech-bubble glyph centered at (cx, cy); `d` is approximate outer diameter. */
+  private drawChatBubbleIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, d: number): void {
+    const bw = d * 0.52;
+    const bh = d * 0.36;
+    const bx = cx - bw / 2;
+    const by = cy - bh / 2 - d * 0.06;
+    const r = Math.max(2, d * 0.1);
+    ctx.fillStyle = RPG_TITLE_CREAM;
+    this.addRoundRectPath(ctx, bx, by, bw, bh, r, true, true);
+    ctx.fill();
+    const tx = bx + d * 0.1;
+    const ty = by + bh - r * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx - d * 0.14, ty + d * 0.15);
+    ctx.lineTo(tx + d * 0.08, ty + d * 0.06);
+    ctx.closePath();
+    ctx.fill();
   }
 
   /** Word-wrap using the active canvas font so lines fit `maxWidth`. */
@@ -470,9 +477,6 @@ export class ChatWidget {
     this.chatMessagesScrollTopPx = scrollTop;
     this.lastChatMaxScrollPx = maxScroll;
 
-    const { width: cw, height: ch } = ctx.canvas;
-    drawHudFlatPanel(ctx, panelX, blockTop, width, viewportH, cw, ch);
-
     ctx.save();
     ctx.beginPath();
     ctx.rect(panelX, blockTop, width, viewportH);
@@ -505,14 +509,9 @@ export class ChatWidget {
   }
 
   private renderChatInput(ctx: CanvasRenderingContext2D): void {
-    if (!this.chatPanelOpen) return;
-
     const width = CHAT_PANEL_MAX_WIDTH;
     const x = this.getPanelX();
     const y = this.getChatColumnLayout(ctx.canvas.width, ctx.canvas.height).inputTopY;
-    const { width: cw, height: ch } = ctx.canvas;
-
-    drawHudFlatPanel(ctx, x, y, width, CHAT_INPUT_HEIGHT, cw, ch);
 
     ctx.font = `${CHAT_FONT_SIZE}px ${CHAT_FONT_FAMILY}`;
     const textY = y + CHAT_INPUT_HEIGHT / 2 + 5;

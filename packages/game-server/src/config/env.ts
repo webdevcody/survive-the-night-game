@@ -33,3 +33,6 @@ export const GAME_SERVER_PUBLIC_WS_URL = (process.env.GAME_SERVER_PUBLIC_WS_URL 
 
 /** Optional label in the server picker (registry). */
 export const GAME_SERVER_DISPLAY_NAME = (process.env.GAME_SERVER_DISPLAY_NAME ?? "").trim();
+
+/** Optional region label stored in the registry (e.g. us-east). */
+export const GAME_SERVER_REGION = (process.env.GAME_SERVER_REGION ?? "").trim();

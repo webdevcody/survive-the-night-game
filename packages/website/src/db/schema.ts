@@ -135,6 +135,8 @@ export const gameServer = pgTable("game_server", {
   id: integer("id").primaryKey(),
   publicWsUrl: text("public_ws_url").notNull(),
   displayName: text("display_name"),
+  /** Geographic or hosting region label (e.g. us-east, eu) for the world picker. */
+  region: text("region"),
   listenPort: integer("listen_port"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

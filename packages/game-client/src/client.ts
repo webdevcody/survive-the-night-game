@@ -211,7 +211,6 @@ export class GameClient {
         const player = getPlayer();
         return player instanceof PlayerClient && player.isOnSkateboard();
       },
-      isChatPanelOpen: () => this.hud?.isChatPanelOpen() ?? false,
       isChatComposing: () => this.hud?.isChatComposing() ?? false,
     });
 
@@ -334,7 +333,6 @@ export class GameClient {
 
     // Chat
     im.on("toggleChat", () => this.hud.toggleChatInput());
-    im.on("toggleChatPanel", () => this.hud.toggleChatPanel());
     im.on("chatInput", ({ key, shiftKey }) => this.hud.updateChatInput(key, shiftKey));
     im.on("sendChat", () => {
       const message = this.hud.getChatInput();

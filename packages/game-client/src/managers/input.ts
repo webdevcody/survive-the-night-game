@@ -31,8 +31,6 @@ export interface InputStateQueries {
   isPlayerDead?: () => boolean;
   /** When true, block firing and combat roll (skateboard). */
   isRidingSkateboard?: () => boolean;
-  /** Chat message panel visibility (Tab). */
-  isChatPanelOpen?: () => boolean;
   /** Y-activated typing mode; drives movement suppression. */
   isChatComposing?: () => boolean;
 }
@@ -42,7 +40,6 @@ export interface InputEventMap {
   toggleInventoryScreen: void;
   inventoryPanelFocusTab: { tab: InventoryUiTab };
   toggleChat: void;
-  toggleChatPanel: void;
   chatInput: { key: string; shiftKey: boolean };
   sendChat: void;
   toggleMute: void;
@@ -167,10 +164,6 @@ export class InputManager {
     return this.queries.isChatComposing?.() ?? false;
   }
 
-  private isChatPanelOpenFromQuery(): boolean {
-    return this.queries.isChatPanelOpen?.() ?? false;
-  }
-
   private isMovementSuppressed(): boolean {
     return (
       this.isChatComposing() ||
@@ -272,13 +265,6 @@ export class InputManager {
       const eventCode = e.code;
       const eventKey = e.key.toLowerCase();
 
-      // Tab toggles chat panel (plain Tab never reaches chat autocomplete; use Shift+Tab there).
-      if (eventCode === "Tab") {
-        e.preventDefault();
-        this.emit("toggleChatPanel");
-        return;
-      }
-
       if (this.isChatComposing()) {
         if (eventKey === "escape") {
           this.emit("toggleChat");
@@ -295,11 +281,6 @@ export class InputManager {
         }
 
         this.emit("chatInput", { key: e.key, shiftKey: e.shiftKey });
-        return;
-      }
-
-      if (this.isChatPanelOpenFromQuery() && eventKey === "escape") {
-        this.emit("toggleChatPanel");
         return;
       }
 

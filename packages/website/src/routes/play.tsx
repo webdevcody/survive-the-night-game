@@ -75,7 +75,12 @@ function GameClientLoader() {
   const [sceneLoadError, setSceneLoadError] = useState<string | null>(null);
   const [serverRegistry, setServerRegistry] = useState<{
     loaded: boolean;
-    servers: Array<{ id: number; displayName: string | null; publicWsUrl: string }>;
+    servers: Array<{
+      id: number;
+      displayName: string | null;
+      region: string | null;
+      publicWsUrl: string;
+    }>;
   }>({ loaded: false, servers: [] });
   const [serverPickResolved, setServerPickResolved] = useState(false);
   const [serverPings, setServerPings] = useState<Record<number, number | null>>({});
@@ -207,7 +212,7 @@ function GameClientLoader() {
         const servers = Array.isArray(data.servers) ? data.servers : [];
         const normalized = servers
           .filter(
-            (s): s is { id: number; displayName: string | null; publicWsUrl: string } =>
+            (s): s is { id: number; displayName: string | null; region?: unknown; publicWsUrl: string } =>
               s &&
               typeof s === "object" &&
               typeof (s as { id: unknown }).id === "number" &&
@@ -216,6 +221,7 @@ function GameClientLoader() {
           .map((s) => ({
             id: s.id,
             displayName: typeof s.displayName === "string" ? s.displayName : null,
+            region: typeof s.region === "string" && s.region.trim() !== "" ? s.region.trim() : null,
             publicWsUrl: s.publicWsUrl,
           }));
         setServerRegistry({ loaded: true, servers: normalized });

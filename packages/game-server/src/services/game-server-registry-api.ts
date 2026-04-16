@@ -3,6 +3,7 @@ import {
   GAME_SERVER_DISPLAY_NAME,
   GAME_SERVER_ID,
   GAME_SERVER_PUBLIC_WS_URL,
+  GAME_SERVER_REGION,
   WEBSITE_API_URL,
 } from "@/config/env";
 
@@ -111,6 +112,7 @@ export async function registerGameServerToWebsite(listenPort: number): Promise<v
     publicWsUrl: GAME_SERVER_PUBLIC_WS_URL,
     listenPort,
     displayName: GAME_SERVER_DISPLAY_NAME || undefined,
+    region: GAME_SERVER_REGION || undefined,
   };
 
   let response: Response;

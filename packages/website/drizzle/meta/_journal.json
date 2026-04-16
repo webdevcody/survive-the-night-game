@@ -120,6 +120,13 @@
       "when": 1776400000000,
       "tag": "0016_game_server_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776500000000,
+      "tag": "0017_game_server_region",
+      "breakpoints": true
     }
   ]
 }

@@ -110,7 +110,7 @@ export function rpgPanelBorderWidth(canvasWidth: number, canvasHeight: number): 
 }
 
 /**
- * Flat HUD control rectangle: mute/players-online chip, chat toggle, exit button, etc.
+ * Flat HUD control rectangle: mute/players-online chip, exit button, etc.
  * Matches `Panel.drawPanelBackground` when panel settings use `RPG_HUD_PANEL_BG` and
  * `RPG_BORDER_GOLD` (see `MuteButtonPanel`, `PlayersOnlinePanel`).
  */

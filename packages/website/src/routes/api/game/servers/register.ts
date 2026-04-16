@@ -4,7 +4,7 @@ import { requireGameServerApiKey } from "~/utils/game-server-api-auth";
 
 /**
  * Game server → website: upsert this instance in the public registry.
- * POST JSON { id: number, publicWsUrl: string, displayName?: string, listenPort?: number } with X-API-Key.
+ * POST JSON { id: number, publicWsUrl: string, displayName?: string, region?: string, listenPort?: number } with X-API-Key.
  */
 export const Route = createFileRoute("/api/game/servers/register")({
   server: {
@@ -20,6 +20,7 @@ export const Route = createFileRoute("/api/game/servers/register")({
             id?: unknown;
             publicWsUrl?: unknown;
             displayName?: unknown;
+            region?: unknown;
             listenPort?: unknown;
           };
 
@@ -50,6 +51,10 @@ export const Route = createFileRoute("/api/game/servers/register")({
             displayName:
               typeof body.displayName === "string" && body.displayName.trim() !== ""
                 ? body.displayName.trim()
+                : null,
+            region:
+              typeof body.region === "string" && body.region.trim() !== ""
+                ? body.region.trim()
                 : null,
             listenPort,
           });

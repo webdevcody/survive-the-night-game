@@ -4,4 +4,3 @@
 - bug mentioned: everyone always faces right for one user
 - it would be fun to have a "Global Boss Event" that alerts all players with a directional exclamation mark or arrow. Super tanky boss with distinct moves
 - blood moon night where a huge swarm of zombies will walk from one point of the map to another
-
