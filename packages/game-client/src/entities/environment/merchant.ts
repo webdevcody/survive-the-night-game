@@ -5,6 +5,10 @@ import { ClientEntity } from "@/entities/client-entity";
 import { Renderable } from "@/entities/util";
 import { Z_INDEX } from "@shared/map";
 import { MERCHANT_STATION_COLLIDABLE_IDS } from "@shared/map/merchant-station-collidables";
+import {
+  MERCHANT_FOOTPRINT_TILES_H,
+  MERCHANT_FOOTPRINT_TILES_W,
+} from "@shared/map/merchant-footprint";
 import { type MerchantShopItem } from "@shared/config";
 import { getConfig } from "@shared/config";
 import { ClientPositionable } from "@/extensions";
@@ -18,64 +22,25 @@ const MERCHANT_SHEET_ROWS = 2;
 
 /** Server/client `Positionable` top-left matches the stall sprite top-left (3×2 tiles). */
 
-function findConnectedMerchantStationBounds(
+/** True when the collidable layer already paints the full 3×2 stall under this entity (procedural / aligned authored stations). */
+function isMerchantFootprintFullyStationCollidable(
   collidables: number[][],
   originTileX: number,
   originTileY: number,
-): { minX: number; minY: number; maxX: number; maxY: number } | null {
+): boolean {
   const H = collidables.length;
   const W = collidables[0]?.length ?? 0;
-  if (W === 0 || H === 0) return null;
+  if (W === 0 || H === 0) return false;
 
-  const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H;
-
-  const seeds: Array<[number, number]> = [];
-  const consider = (x: number, y: number) => {
-    if (inBounds(x, y) && MERCHANT_STATION_COLLIDABLE_IDS.has(collidables[y][x])) {
-      seeds.push([x, y]);
-    }
-  };
-  consider(originTileX, originTileY);
-  for (let dy = -3; dy <= 3; dy++) {
-    for (let dx = -3; dx <= 3; dx++) {
-      consider(originTileX + dx, originTileY + dy);
+  for (let dy = 0; dy < MERCHANT_FOOTPRINT_TILES_H; dy++) {
+    for (let dx = 0; dx < MERCHANT_FOOTPRINT_TILES_W; dx++) {
+      const x = originTileX + dx;
+      const y = originTileY + dy;
+      if (x < 0 || y < 0 || x >= W || y >= H) return false;
+      if (!MERCHANT_STATION_COLLIDABLE_IDS.has(collidables[y][x])) return false;
     }
   }
-  if (seeds.length === 0) return null;
-
-  const visited = new Set<string>();
-  const q: Array<[number, number]> = [[seeds[0][0], seeds[0][1]]];
-  visited.add(`${seeds[0][0]},${seeds[0][1]}`);
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  while (q.length > 0) {
-    const [x, y] = q.pop()!;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-    for (const [dx, dy] of [
-      [0, -1],
-      [0, 1],
-      [-1, 0],
-      [1, 0],
-    ] as const) {
-      const nx = x + dx;
-      const ny = y + dy;
-      const key = `${nx},${ny}`;
-      if (!inBounds(nx, ny) || visited.has(key)) continue;
-      if (!MERCHANT_STATION_COLLIDABLE_IDS.has(collidables[ny][nx])) continue;
-      visited.add(key);
-      q.push([nx, ny]);
-    }
-    if (visited.size > 32) break;
-  }
-
-  if (!Number.isFinite(minX)) return null;
-  return { minX, minY, maxX, maxY };
+  return true;
 }
 
 export class MerchantClient extends ClientEntity implements Renderable {
@@ -114,11 +79,11 @@ export class MerchantClient extends ClientEntity implements Renderable {
     const tileY = Math.floor(position.y / TILE_SIZE);
 
     const collidables = tryGetWorldCollidables();
-    if (collidables?.length) {
-      const bounds = findConnectedMerchantStationBounds(collidables, tileX, tileY);
-      if (bounds != null) {
-        return;
-      }
+    if (
+      collidables?.length &&
+      isMerchantFootprintFullyStationCollidable(collidables, tileX, tileY)
+    ) {
+      return;
     }
 
     const sw = MERCHANT_SHEET_COLS * TILE_SIZE;
