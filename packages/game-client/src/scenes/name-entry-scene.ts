@@ -1,6 +1,6 @@
 import { Scene } from "./scene";
 import { SceneManager } from "./scene-manager";
-import { GameScene } from "./game-scene";
+import { ClassSelectionScene } from "./class-selection-scene";
 
 export class NameEntryScene extends Scene {
   private sceneManager: SceneManager;
@@ -63,8 +63,8 @@ export class NameEntryScene extends Scene {
     // Small delay for visual feedback
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Transition to game scene
-    await this.sceneManager.switchScene(GameScene);
+    // Transition to class selection before joining the game
+    await this.sceneManager.switchScene(ClassSelectionScene);
   }
 
   update(deltaTime: number): void {

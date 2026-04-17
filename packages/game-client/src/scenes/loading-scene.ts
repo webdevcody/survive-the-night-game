@@ -3,6 +3,7 @@ import { AssetManager } from "@/managers/asset";
 import { SoundManager } from "@/managers/sound-manager";
 import { SceneManager } from "./scene-manager";
 import { NameEntryScene } from "./name-entry-scene";
+import { ClassSelectionScene, getSelectedClassId } from "./class-selection-scene";
 import { GameScene } from "./game-scene";
 
 /** Same asset as `WorldPickerPanel` (`/world-picker-bg-pixel.png`). */
@@ -69,12 +70,15 @@ export class LoadingScene extends Scene {
       // Check if user already has a display name from the HTML form
       const displayName = localStorage.getItem("displayName");
 
-      if (displayName) {
-        // User already entered name, go straight to game
-        await this.sceneManager.switchScene(GameScene);
-      } else {
+      if (!displayName) {
         // No name yet, show name entry scene
         await this.sceneManager.switchScene(NameEntryScene);
+      } else if (!getSelectedClassId()) {
+        // Has name but hasn't picked a class yet
+        await this.sceneManager.switchScene(ClassSelectionScene);
+      } else {
+        // Returning player, go straight to game
+        await this.sceneManager.switchScene(GameScene);
       }
     } catch (error) {
       console.error("Failed to load assets:", error);

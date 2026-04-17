@@ -8,6 +8,7 @@ import { GameEvent } from "@shared/events/types";
 import { RegExpMatcher, TextCensor } from "obscenity";
 import { ISocketAdapter } from "@shared/network/socket-adapter";
 import { PlayerColor } from "@shared/commands/commands";
+import { PlayerClassId } from "@shared/player/player-class";
 import { SessionValidator } from "@/services/session-validator";
 import { UserSessionCache } from "@/services/user-session-cache";
 import type { PersistedPlayerProgress } from "@/services/player-progress-types";
@@ -16,6 +17,7 @@ export interface HandlerContext {
   players: Map<string, Player>;
   playerDisplayNames: Map<string, string>;
   playerColors: Map<string, PlayerColor>;
+  playerClasses: Map<string, PlayerClassId>;
   gameServer: GameServer;
   bufferManager: BufferManager;
   chatCommandRegistry: CommandRegistry;

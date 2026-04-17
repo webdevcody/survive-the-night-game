@@ -4,6 +4,7 @@ import { SocketEventHandler } from "./types";
 import { performPlayerDisconnect } from "@/session/player-session-lifecycle";
 
 export async function onDisconnect(context: HandlerContext, socket: ISocketAdapter): Promise<void> {
+  context.playerClasses.delete(socket.id);
   if (context.performManagedDisconnect) {
     await context.performManagedDisconnect(socket);
     return;

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 900" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="320" y1="0" x2="320" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09120f"/>
+      <stop offset="0.5" stop-color="#10231c"/>
+      <stop offset="1" stop-color="#05090c"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="88" y1="208" x2="560" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A5F0BC" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="313" y1="334" x2="313" y2="730" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202C29"/>
+      <stop offset="1" stop-color="#0A100F"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="900" fill="url(#bg)"/>
+  <circle cx="468" cy="150" r="90" fill="#D2FFD8" fill-opacity="0.13"/>
+  <circle cx="468" cy="150" r="58" fill="#D2FFD8" fill-opacity="0.18"/>
+  <path d="M0 210H640V430C547 480 420 494 300 470C173 446 70 390 0 330V210Z" fill="url(#mist)"/>
+  <path d="M0 448L78 404L124 430L180 382L230 418L290 356L344 392L396 338L454 382L520 326L578 370L640 324V900H0V448Z" fill="#08100C"/>
+  <path d="M0 612L88 580L138 614L210 556L286 602L356 526L430 584L520 514L640 578V900H0V612Z" fill="#040807"/>
+  <rect x="94" y="596" width="116" height="12" rx="6" fill="#3E584C"/>
+  <rect x="144" y="566" width="18" height="84" fill="#31463D"/>
+  <rect x="428" y="612" width="122" height="12" rx="6" fill="#3E584C"/>
+  <rect x="478" y="582" width="18" height="84" fill="#31463D"/>
+
+  <ellipse cx="316" cy="770" rx="132" ry="38" fill="#000000" fill-opacity="0.35"/>
+  <circle cx="316" cy="260" r="50" fill="#25342F"/>
+  <path d="M264 324L364 316L398 470L352 646H274L232 462L264 324Z" fill="url(#coat)"/>
+  <path d="M286 334L340 334L354 392L276 392L286 334Z" fill="#3F5D4B"/>
+  <path d="M244 360L284 382L248 520L208 500L244 360Z" fill="#111A17"/>
+  <path d="M390 356L430 382L540 328L524 298L404 344L390 356Z" fill="#292F2E"/>
+  <rect x="510" y="282" width="28" height="88" rx="10" transform="rotate(21 510 282)" fill="#5E4D37"/>
+  <path d="M280 646H320L300 854H258L280 646Z" fill="#171E1C"/>
+  <path d="M326 646H366L394 854H346L326 646Z" fill="#171E1C"/>
+  <rect x="248" y="846" width="74" height="20" rx="10" fill="#2A3631"/>
+  <rect x="332" y="846" width="74" height="20" rx="10" fill="#2A3631"/>
+  <path d="M220 476L254 496L238 596L196 588L220 476Z" fill="#181F1E"/>
+  <rect x="0" y="0" width="640" height="900" fill="url(#mist)" opacity="0.32"/>
+  <text x="58" y="118" fill="#D7F7E0" fill-opacity="0.08" font-family="Georgia, serif" font-size="76" font-weight="700" letter-spacing="6">SURVIVOR</text>
+</svg>
