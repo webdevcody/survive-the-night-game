@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 900" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="320" y1="0" x2="320" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#160D09"/>
+      <stop offset="0.46" stop-color="#2B1910"/>
+      <stop offset="1" stop-color="#090604"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="174" y1="346" x2="620" y2="484" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF0B2" stop-opacity="0.82"/>
+      <stop offset="1" stop-color="#FFF0B2" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="figure" x1="286" y1="296" x2="286" y2="822" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B2621"/>
+      <stop offset="1" stop-color="#0E0D0C"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="900" fill="url(#bg)"/>
+  <circle cx="504" cy="162" r="98" fill="#FFCF7B" fill-opacity="0.13"/>
+  <circle cx="120" cy="146" r="64" fill="#FF9F4D" fill-opacity="0.1"/>
+  <path d="M62 356L576 286L640 442L136 508L62 356Z" fill="url(#beam)"/>
+  <path d="M0 478L92 430L142 466L232 402L286 446L362 388L430 432L506 374L640 454V900H0V478Z" fill="#0D0806"/>
+  <path d="M0 612L82 586L128 610L202 566L286 618L360 552L450 624L536 560L640 620V900H0V612Z" fill="#050302"/>
+
+  <rect x="434" y="590" width="84" height="78" rx="8" fill="#2B1A10"/>
+  <rect x="448" y="572" width="84" height="78" rx="8" fill="#341D10"/>
+  <rect x="116" y="620" width="74" height="60" rx="8" fill="#2B1A10"/>
+  <rect x="132" y="602" width="74" height="60" rx="8" fill="#341D10"/>
+  <rect x="460" y="594" width="58" height="12" fill="#6D4A28" fill-opacity="0.65"/>
+  <rect x="144" y="624" width="46" height="10" fill="#6D4A28" fill-opacity="0.65"/>
+
+  <ellipse cx="294" cy="782" rx="134" ry="38" fill="#000000" fill-opacity="0.34"/>
+  <circle cx="292" cy="248" r="48" fill="#3A3028"/>
+  <path d="M248 304L338 304L388 474L324 640H256L210 470L248 304Z" fill="url(#figure)"/>
+  <path d="M332 356L398 390L400 572L332 548V356Z" fill="#40352B"/>
+  <path d="M218 356L250 380L214 522L180 506L218 356Z" fill="#181411"/>
+  <path d="M390 388L430 410L482 356L454 330L392 378L390 388Z" fill="#2C241D"/>
+  <path d="M178 486L230 504L206 594L150 582L178 486Z" fill="#1A1512"/>
+  <path d="M258 640H300L282 854H236L258 640Z" fill="#191512"/>
+  <path d="M308 640H354L390 854H340L308 640Z" fill="#191512"/>
+  <rect x="224" y="844" width="74" height="20" rx="10" fill="#2A211B"/>
+  <rect x="336" y="844" width="74" height="20" rx="10" fill="#2A211B"/>
+  <path d="M448 332L470 350L360 514L332 500L448 332Z" fill="#564437"/>
+  <circle cx="466" cy="350" r="18" fill="#FFF4C9" fill-opacity="0.9"/>
+  <text x="54" y="118" fill="#FFE2B3" fill-opacity="0.08" font-family="Georgia, serif" font-size="72" font-weight="700" letter-spacing="6">SCAVENGER</text>
+</svg>

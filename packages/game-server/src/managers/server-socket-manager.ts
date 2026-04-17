@@ -71,6 +71,7 @@ import { GameMessageEvent } from "../../../game-shared/src/events/server-sent/ev
 import { ServerUpdatingEvent } from "../../../game-shared/src/events/server-sent/events/server-updating-event";
 import uWS from "uwebsockets.js";
 import { performPlayerDisconnect } from "@/session/player-session-lifecycle";
+import { coercePlayerClassId, type PlayerClassId } from "@shared/player/player-class";
 
 /**
  * Any and all functionality related to sending server side events
@@ -81,6 +82,7 @@ export class ServerSocketManager implements Broadcaster {
   private players: Map<string, Player> = new Map();
   private playerDisplayNames: Map<string, string> = new Map();
   private playerColors: Map<string, PlayerColor> = new Map();
+  private playerClasses: Map<string, PlayerClassId> = new Map();
   private port: number;
   private entityManager?: IEntityManager;
   private mapManager?: MapManager;
@@ -174,7 +176,7 @@ export class ServerSocketManager implements Broadcaster {
         return;
       }
 
-      const { displayName, version, gameAuthToken } = socket.handshake.query;
+      const { displayName, version, gameAuthToken, selectedClass } = socket.handshake.query;
 
       const rawDisplayName = displayName
         ? Array.isArray(displayName)
@@ -219,6 +221,9 @@ export class ServerSocketManager implements Broadcaster {
       const userId = authResult.userId;
 
       const filteredDisplayName = rawDisplayName ? this.sanitizeText(rawDisplayName) : undefined;
+      const resolvedPlayerClass = coercePlayerClassId(
+        Array.isArray(selectedClass) ? selectedClass[0] : selectedClass,
+      );
 
       void (async () => {
         const loaded = await this.fetchPersistedProgress(userId);
@@ -264,6 +269,7 @@ export class ServerSocketManager implements Broadcaster {
         }
 
         this.playerDisplayNames.set(socket.id, filteredDisplayName || "Unknown");
+        this.playerClasses.set(socket.id, resolvedPlayerClass);
         this.userSessionCache.setUserSession(socket.id, userId, tokenStr!, { gameSessionId });
         this.registerLeaseHeartbeat(socket.id, userId, gameSessionId);
         this.ensureLeaseHeartbeatLoop();
@@ -275,6 +281,7 @@ export class ServerSocketManager implements Broadcaster {
           await releasePlayerGameSessionToWebsite(userId, gameSessionId);
           this.userSessionCache.removeSocket(socket.id);
           this.playerDisplayNames.delete(socket.id);
+          this.playerClasses.delete(socket.id);
           this.clearLeaseHeartbeat(socket.id);
           socket.disconnect(true);
           return;
@@ -445,6 +452,7 @@ export class ServerSocketManager implements Broadcaster {
       players: this.players,
       playerDisplayNames: this.playerDisplayNames,
       playerColors: this.playerColors,
+      playerClasses: this.playerClasses,
       gameServer: this.gameServer,
       bufferManager: this.bufferManager,
       chatCommandRegistry: this.chatCommandRegistry,
@@ -538,6 +546,7 @@ export class ServerSocketManager implements Broadcaster {
   ): Player {
     const player = new Player(this.getGameManagers());
     player.setDisplayName(this.playerDisplayNames.get(socket.id) ?? "Unknown");
+    player.setPlayerClassId(this.playerClasses.get(socket.id) ?? "survivor");
 
     // Apply saved player color if one exists for this socket
     const savedColor = this.playerColors.get(socket.id);
@@ -800,6 +809,7 @@ export class ServerSocketManager implements Broadcaster {
       }
       this.playerDisplayNames.delete(existingSocketId);
       this.playerColors.delete(existingSocketId);
+      this.playerClasses.delete(existingSocketId);
       this.clearLeaseHeartbeat(existingSocketId);
       this.lastGameplayActivityBySocket.delete(existingSocketId);
       this.userSessionCache.removeSocket(existingSocketId);

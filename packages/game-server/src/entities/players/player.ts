@@ -150,6 +150,7 @@ import {
   isSneakActive,
 } from "@shared/util/ability-effects";
 import { BaseEnemy } from "@/entities/enemies/base-enemy";
+import { PlayerClassId } from "@shared/player/player-class";
 
 const PLAYER_LOADOUT_KEYS = [
   "weaponLoadoutPrimary",
@@ -243,6 +244,7 @@ export class Player extends Entity {
         experience: 0,
         ping: 0,
         displayName: "",
+        playerClassId: "survivor",
         stamina: getConfig().player.MAX_STAMINA,
         maxStamina: getConfig().player.MAX_STAMINA,
         deathTime: 0, // Timestamp when player died, 0 means not dead
@@ -2228,6 +2230,14 @@ export class Player extends Entity {
 
   getPlayerColor(): PlayerColor {
     return this.serialized.get("playerColor");
+  }
+
+  setPlayerClassId(playerClassId: PlayerClassId): void {
+    this.serialized.set("playerClassId", playerClassId);
+  }
+
+  getPlayerClassId(): PlayerClassId {
+    return this.serialized.get("playerClassId");
   }
 
   incrementKills() {

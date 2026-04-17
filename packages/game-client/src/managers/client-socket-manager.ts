@@ -231,6 +231,12 @@ export class ClientSocketManager {
       version,
     });
 
+    // Include the class the player chose on the class-selection screen, if any
+    const selectedClass = localStorage.getItem("selectedClass");
+    if (selectedClass) {
+      params.set("selectedClass", selectedClass);
+    }
+
     // Game auth token must be set by the host (e.g. website sets window.__gameAuthToken before connect)
     const gameAuthToken = getGameAuthToken();
     if (!gameAuthToken) {

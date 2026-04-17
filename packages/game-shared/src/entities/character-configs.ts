@@ -36,6 +36,51 @@ export const CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
       },
     },
   },
+  player_survivor: {
+    id: "player_survivor",
+    category: "player",
+    assets: {
+      assetPrefix: "player_survivor",
+      frameLayout: {
+        startX: 0,
+        downY: 144,
+        leftY: 160,
+        upY: 176,
+        totalFrames: 3,
+        sheet: "characters",
+      },
+    },
+  },
+  player_scavenger: {
+    id: "player_scavenger",
+    category: "player",
+    assets: {
+      assetPrefix: "player_scavenger",
+      frameLayout: {
+        startX: 64,
+        downY: 144,
+        leftY: 160,
+        upY: 176,
+        totalFrames: 3,
+        sheet: "characters",
+      },
+    },
+  },
+  player_medic: {
+    id: "player_medic",
+    category: "player",
+    assets: {
+      assetPrefix: "player_medic",
+      frameLayout: {
+        startX: 112,
+        downY: 144,
+        leftY: 160,
+        upY: 176,
+        totalFrames: 3,
+        sheet: "characters",
+      },
+    },
+  },
   survivor: {
     id: "survivor",
     category: "npc",
